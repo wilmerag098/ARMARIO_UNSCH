@@ -1,0 +1,143 @@
+@import 'tailwindcss';
+
+@import 'tw-animate-css';
+
+@source '../views';
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+    --font-sans:
+        'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
+        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+        'Noto Color Emoji';
+
+    --radius-lg: var(--radius);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-sm: calc(var(--radius) - 4px);
+
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+
+    --color-chart-1: var(--chart-1);
+    --color-chart-2: var(--chart-2);
+    --color-chart-3: var(--chart-3);
+    --color-chart-4: var(--chart-4);
+    --color-chart-5: var(--chart-5);
+
+    --color-sidebar: var(--sidebar);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+    --background: #120202;
+    --foreground: #fdeaea;
+    --card: #381216;
+    --card-foreground: #fdeaea;
+    --popover: #381216;
+    --popover-foreground: #fdeaea;
+    --primary: #94344c;
+    --primary-foreground: #ffffff;
+    --secondary: #571e26;
+    --secondary-foreground: #fdeaea;
+    --muted: #290a0f;
+    --muted-foreground: #d2a9b1;
+    --accent: #571e26;
+    --accent-foreground: #fdeaea;
+    --destructive: #7f1d1d;
+    --destructive-foreground: #ffffff;
+    --border: #381216;
+    --input: #381216;
+    --ring: #94344c;
+    --chart-1: #94344c;
+    --chart-2: #571e26;
+    --chart-3: #f4a3b4;
+    --chart-4: #290a0f;
+    --chart-5: #381216;
+    --radius: 0.75rem;
+    --sidebar: #120202;
+    --sidebar-foreground: #fdeaea;
+    --sidebar-primary: #94344c;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #381216;
+    --sidebar-accent-foreground: #fdeaea;
+    --sidebar-border: #381216;
+    --sidebar-ring: #94344c;
+}
+
+.dark {
+    --background: #120202;
+    --foreground: #fdeaea;
+    --card: #381216;
+    --card-foreground: #fdeaea;
+    --popover: #381216;
+    --popover-foreground: #fdeaea;
+    --primary: #94344c;
+    --primary-foreground: #ffffff;
+    --secondary: #571e26;
+    --secondary-foreground: #fdeaea;
+    --muted: #290a0f;
+    --muted-foreground: #d2a9b1;
+    --accent: #571e26;
+    --accent-foreground: #fdeaea;
+    --destructive: #7f1d1d;
+    --destructive-foreground: #ffffff;
+    --border: #381216;
+    --input: #381216;
+    --ring: #94344c;
+    --chart-1: #94344c;
+    --chart-2: #571e26;
+    --chart-3: #f4a3b4;
+    --chart-4: #290a0f;
+    --chart-5: #381216;
+    --sidebar: #120202;
+    --sidebar-foreground: #fdeaea;
+    --sidebar-primary: #94344c;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #381216;
+    --sidebar-accent-foreground: #fdeaea;
+    --sidebar-border: #381216;
+    --sidebar-ring: #94344c;
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+
+    body {
+        @apply bg-background text-foreground;
+    }
+}
