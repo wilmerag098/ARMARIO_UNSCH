@@ -9,7 +9,7 @@ class Reservation extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['user_id', 'order_number', 'start_date', 'end_date', 'total_amount', 'status'];
+    protected $fillable = ['user_id', 'order_number', 'start_date', 'end_date', 'total_amount', 'status', 'promotion_id', 'discount_amount'];
 
     public function user()
     {
@@ -19,5 +19,10 @@ class Reservation extends Model
     public function items()
     {
         return $this->hasMany(ReservationItem::class);
+    }
+
+    public function promotion()
+    {
+        return $this->belongsTo(Promotion::class);
     }
 }

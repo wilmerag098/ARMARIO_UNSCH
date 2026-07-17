@@ -16,7 +16,7 @@ export default function CartDrawer({ isOpen, onClose, product, selectedSize }: C
 
     // Simulate 3 days reservation for the total price placeholder
     const days = 3; 
-    const pricePerDay = parseFloat(product?.price_per_day || '0');
+    const pricePerDay = parseFloat(product?.discounted_price_per_day || product?.price_per_day || '0');
     const deposit = parseFloat(product?.security_deposit || '0');
     const total = (pricePerDay * days) + deposit;
 

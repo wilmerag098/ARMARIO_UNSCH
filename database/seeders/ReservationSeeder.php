@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\Inventory;
 use App\Models\Reservation;
 use App\Models\ReservationItem;
+use App\Models\Promotion;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 
@@ -29,7 +30,6 @@ class ReservationSeeder extends Seeder
             ]);
         }
 
-        // Create a few more users to have variety in the dashboard
         $users = [
             $user1,
             User::firstOrCreate(
@@ -74,188 +74,117 @@ class ReservationSeeder extends Seeder
             )
         ];
 
-        // Fetch products and inventories
-        $products = Product::all();
-        
-        if ($products->isEmpty()) {
-            return;
-        }
-
-        // Clean existing reservations and items to ensure clean seed
+        // Clean existing reservations and items
         Reservation::query()->delete();
         ReservationItem::query()->delete();
 
+        // Get promotion
+        $promotion = Promotion::where('is_active', true)->first();
+
+        // Separate main products and accessories
+        $mainProducts = Product::whereHas('category', function($q) {
+            $q->where('slug', '!=', 'accesorios');
+        })->get();
+
+        $accessories = Product::whereHas('category', function($q) {
+            $q->where('slug', 'accesorios');
+        })->get();
+
+        if ($mainProducts->isEmpty()) {
+            return;
+        }
+
         // We will seed 15 reservations spread across the last 3 months
-        $statuses = ['completed', 'confirmed', 'pending', 'cancelled'];
-        
-        // Let's create specific scenarios
-        
-        // Scenario 1: Completed reservations (last month/weeks)
-        for ($i = 0; $i < 8; $i++) {
+        for ($i = 0; $i < 15; $i++) {
             $user = $users[array_rand($users)];
-            $product = $products->random();
+            $product = $mainProducts->random();
             $inventory = $product->inventories()->first() ?? Inventory::first();
             
-            $daysAgoStart = rand(15, 60);
-            $startDate = Carbon::now()->subDays($daysAgoStart);
+            // Random start dates in the last 45 days or future 10 days
+            $daysOffset = rand(-45, 10);
+            $startDate = Carbon::now()->addDays($daysOffset);
             $endDate = (clone $startDate)->addDays(rand(2, 5));
-            $days = $startDate->diffInDays($endDate) ?: 1;
+            $days = $startDate->diffInDays($endDate) + 1;
             
-            $total = $product->price_per_day * $days;
+            $mainSubtotal = $product->price_per_day * $days;
+            $accessoriesSubtotal = 0.00;
+            $discountAmount = 0.00;
+            $appliedPromoId = null;
+
+            // Determine status based on dates
+            if ($startDate->isFuture()) {
+                $status = 'pendiente';
+            } elseif ($endDate->isPast()) {
+                $status = rand(0, 10) > 2 ? 'devuelta' : 'rechazada';
+            } else {
+                $status = rand(0, 10) > 3 ? 'en_uso' : 'entregada';
+            }
+
+            // Decide if this reservation includes accessories (60% chance)
+            $addAccessory = (rand(0, 10) < 6) && !$accessories->isEmpty();
+            $itemsToCreate = [
+                [
+                    'product' => $product,
+                    'inventory' => $inventory,
+                    'price' => $product->price_per_day,
+                    'subtotal' => $mainSubtotal
+                ]
+            ];
+
+            if ($addAccessory) {
+                $accProduct = $accessories->random();
+                $accInventory = $accProduct->inventories()->first() ?? Inventory::first();
+                $accSubtotal = $accProduct->price_per_day * $days;
+                
+                // Check if promotion is active and main rental amount > min_amount
+                $isPromoApplicable = $promotion && ($mainSubtotal > $promotion->min_amount);
+                
+                if ($isPromoApplicable) {
+                    $appliedPromoId = $promotion->id;
+                    $itemDiscount = $accSubtotal * ($promotion->discount_percentage / 100.00);
+                    $discountAmount = $itemDiscount;
+                    $accSubtotalAfterDiscount = $accSubtotal - $itemDiscount;
+                } else {
+                    $accSubtotalAfterDiscount = $accSubtotal;
+                }
+
+                $itemsToCreate[] = [
+                    'product' => $accProduct,
+                    'inventory' => $accInventory,
+                    'price' => $accProduct->price_per_day,
+                    'subtotal' => $accSubtotalAfterDiscount
+                ];
+
+                $accessoriesSubtotal = $accSubtotal;
+            }
+
+            $serviceFee = 15.00;
+            $totalAmount = $mainSubtotal + $accessoriesSubtotal - $discountAmount + $serviceFee;
 
             $reservation = Reservation::create([
                 'user_id' => $user->id,
                 'order_number' => 'RES-' . strtoupper(Str::random(8)),
                 'start_date' => $startDate->toDateString(),
                 'end_date' => $endDate->toDateString(),
-                'total_amount' => $total,
-                'status' => 'devuelta',
-                'created_at' => $startDate->subHours(2),
+                'total_amount' => $totalAmount,
+                'discount_amount' => $discountAmount,
+                'promotion_id' => $appliedPromoId,
+                'status' => $status,
+                'created_at' => $startDate->subHours(rand(2, 24)),
                 'updated_at' => $endDate
             ]);
 
-            ReservationItem::create([
-                'reservation_id' => $reservation->id,
-                'product_id' => $product->id,
-                'inventory_id' => $inventory->id,
-                'price_at_time' => $product->price_per_day,
-                'start_date' => $reservation->start_date,
-                'end_date' => $reservation->end_date,
-                'subtotal' => $total
-            ]);
-        }
-
-        // Scenario 2: Active rentals (currently in use)
-        // start_date is 2 days ago, end_date is 3 days from now, status confirmed
-        for ($i = 0; $i < 3; $i++) {
-            $user = $users[array_rand($users)];
-            $product = $products->random();
-            $inventory = $product->inventories()->first() ?? Inventory::first();
-            
-            $startDate = Carbon::now()->subDays(rand(1, 3));
-            $endDate = Carbon::now()->addDays(rand(2, 4));
-            $days = $startDate->diffInDays($endDate) ?: 1;
-            
-            $total = $product->price_per_day * $days;
-
-            $reservation = Reservation::create([
-                'user_id' => $user->id,
-                'order_number' => 'RES-ACT-' . strtoupper(Str::random(6)),
-                'start_date' => $startDate->toDateString(),
-                'end_date' => $endDate->toDateString(),
-                'total_amount' => $total,
-                'status' => 'en_uso', // Confirmed implies active/approved
-                'created_at' => $startDate->subDay()
-            ]);
-
-            ReservationItem::create([
-                'reservation_id' => $reservation->id,
-                'product_id' => $product->id,
-                'inventory_id' => $inventory->id,
-                'price_at_time' => $product->price_per_day,
-                'start_date' => $reservation->start_date,
-                'end_date' => $reservation->end_date,
-                'subtotal' => $total
-            ]);
-        }
-
-        // Scenario 3: Overdue returns (start_date in past, end_date in past, status confirmed)
-        for ($i = 0; $i < 2; $i++) {
-            $user = $users[array_rand($users)];
-            $product = $products->random();
-            $inventory = $product->inventories()->first() ?? Inventory::first();
-            
-            $startDate = Carbon::now()->subDays(rand(12, 15));
-            $endDate = Carbon::now()->subDays(rand(5, 7)); // Should have been returned
-            $days = $startDate->diffInDays($endDate) ?: 1;
-            
-            $total = $product->price_per_day * $days;
-
-            $reservation = Reservation::create([
-                'user_id' => $user->id,
-                'order_number' => 'RES-OVD-' . strtoupper(Str::random(6)),
-                'start_date' => $startDate->toDateString(),
-                'end_date' => $endDate->toDateString(),
-                'total_amount' => $total,
-                'status' => 'entregada', // Still confirmed/in-use, hence overdue!
-                'created_at' => $startDate->subDay()
-            ]);
-
-            ReservationItem::create([
-                'reservation_id' => $reservation->id,
-                'product_id' => $product->id,
-                'inventory_id' => $inventory->id,
-                'price_at_time' => $product->price_per_day,
-                'start_date' => $reservation->start_date,
-                'end_date' => $reservation->end_date,
-                'subtotal' => $total
-            ]);
-        }
-
-        // Scenario 4: Pending future reservations
-        for ($i = 0; $i < 3; $i++) {
-            $user = $users[array_rand($users)];
-            $product = $products->random();
-            $inventory = $product->inventories()->first() ?? Inventory::first();
-            
-            $startDate = Carbon::now()->addDays(rand(2, 10));
-            $endDate = (clone $startDate)->addDays(rand(2, 4));
-            $days = $startDate->diffInDays($endDate) ?: 1;
-            
-            $total = $product->price_per_day * $days;
-
-            $reservation = Reservation::create([
-                'user_id' => $user->id,
-                'order_number' => 'RES-PEN-' . strtoupper(Str::random(6)),
-                'start_date' => $startDate->toDateString(),
-                'end_date' => $endDate->toDateString(),
-                'total_amount' => $total,
-                'status' => 'pendiente',
-                'created_at' => Carbon::now()->subDays(rand(1, 2))
-            ]);
-
-            ReservationItem::create([
-                'reservation_id' => $reservation->id,
-                'product_id' => $product->id,
-                'inventory_id' => $inventory->id,
-                'price_at_time' => $product->price_per_day,
-                'start_date' => $reservation->start_date,
-                'end_date' => $reservation->end_date,
-                'subtotal' => $total
-            ]);
-        }
-
-        // Scenario 5: Cancelled reservations
-        for ($i = 0; $i < 2; $i++) {
-            $user = $users[array_rand($users)];
-            $product = $products->random();
-            $inventory = $product->inventories()->first() ?? Inventory::first();
-            
-            $startDate = Carbon::now()->subDays(rand(5, 10));
-            $endDate = (clone $startDate)->addDays(rand(2, 4));
-            $days = $startDate->diffInDays($endDate) ?: 1;
-            
-            $total = $product->price_per_day * $days;
-
-            $reservation = Reservation::create([
-                'user_id' => $user->id,
-                'order_number' => 'RES-CAN-' . strtoupper(Str::random(6)),
-                'start_date' => $startDate->toDateString(),
-                'end_date' => $endDate->toDateString(),
-                'total_amount' => $total,
-                'status' => 'rechazada',
-                'created_at' => Carbon::now()->subDays(rand(15, 20))
-            ]);
-
-            ReservationItem::create([
-                'reservation_id' => $reservation->id,
-                'product_id' => $product->id,
-                'inventory_id' => $inventory->id,
-                'price_at_time' => $product->price_per_day,
-                'start_date' => $reservation->start_date,
-                'end_date' => $reservation->end_date,
-                'subtotal' => $total
-            ]);
+            foreach ($itemsToCreate as $item) {
+                ReservationItem::create([
+                    'reservation_id' => $reservation->id,
+                    'product_id' => $item['product']->id,
+                    'inventory_id' => $item['inventory']->id,
+                    'price_at_time' => $item['price'],
+                    'start_date' => $reservation->start_date,
+                    'end_date' => $reservation->end_date,
+                    'subtotal' => $item['subtotal']
+                ]);
+            }
         }
     }
 }

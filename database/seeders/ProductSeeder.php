@@ -42,10 +42,16 @@ class ProductSeeder extends Seeder
             ],
         ]);
         
-        Inventory::create(['product_id' => $product1->id, 'size' => 'S', 'sku' => 'SG-S-001', 'status' => 'available']);
-        Inventory::create(['product_id' => $product1->id, 'size' => 'M', 'sku' => 'SG-M-001', 'status' => 'available']);
-        Inventory::create(['product_id' => $product1->id, 'size' => 'L', 'sku' => 'SG-L-001', 'status' => 'maintenance']);
-        Inventory::create(['product_id' => $product1->id, 'size' => 'XL', 'sku' => 'SG-XL-001', 'status' => 'available']);
+        $sizes = ['S', 'M', 'L', 'XL'];
+        for ($k = 1; $k <= 25; $k++) {
+            $sz = $sizes[$k % count($sizes)];
+            Inventory::create([
+                'product_id' => $product1->id,
+                'size' => $sz,
+                'sku' => "SG-{$sz}-" . str_pad($k, 3, '0', STR_PAD_LEFT),
+                'status' => 'available'
+            ]);
+        }
 
         // 2. Vestido de Noche Largo - Azul Escarlata
         $product2 = Product::create([
@@ -113,5 +119,60 @@ class ProductSeeder extends Seeder
         Inventory::create(['product_id' => $product4->id, 'size' => 'M', 'sku' => 'TG-M-001', 'status' => 'available']);
         Inventory::create(['product_id' => $product4->id, 'size' => 'L', 'sku' => 'TG-L-001', 'status' => 'available']);
         Inventory::create(['product_id' => $product4->id, 'size' => 'XL', 'sku' => 'TG-XL-001', 'status' => 'maintenance']);
+
+        $categoryAccesorios = Category::where('slug', 'accesorios')->first();
+        if ($categoryAccesorios) {
+            // A1. Corbata Satinada Negra
+            $accesorios1 = Product::create([
+                'category_id' => $categoryAccesorios->id,
+                'name' => 'Corbata Satinada Negra',
+                'slug' => 'corbata-satinada-negra',
+                'description' => 'Corbata slim satinada negra de alta calidad para ternos de gala.',
+                'price_per_day' => 8.00,
+                'security_deposit' => 15.00,
+                'image_url' => 'https://images.unsplash.com/photo-1589756823855-edd134dc6b65?q=80&w=800&auto=format&fit=crop',
+                'specifications' => [
+                    ['label' => 'Ancho', 'value' => '6 cm (Slim)'],
+                    ['label' => 'Material', 'value' => 'Satén 100%'],
+                    ['label' => 'Color', 'value' => 'Negro']
+                ]
+            ]);
+            Inventory::create(['product_id' => $accesorios1->id, 'size' => 'Única', 'sku' => 'ACC-TIE-001', 'status' => 'available']);
+
+            // A2. Correa de Cuero Formal
+            $accesorios2 = Product::create([
+                'category_id' => $categoryAccesorios->id,
+                'name' => 'Correa de Cuero Formal',
+                'slug' => 'correa-cuero-formal',
+                'description' => 'Correa de cuero legítimo con hebilla plateada clásica para traje formal.',
+                'price_per_day' => 10.00,
+                'security_deposit' => 20.00,
+                'image_url' => 'https://images.unsplash.com/photo-1624222247344-550fb8ecfe7c?q=80&w=800&auto=format&fit=crop',
+                'specifications' => [
+                    ['label' => 'Material', 'value' => 'Cuero de res vacuno'],
+                    ['label' => 'Ancho', 'value' => '3.5 cm'],
+                    ['label' => 'Color', 'value' => 'Negro']
+                ]
+            ]);
+            Inventory::create(['product_id' => $accesorios2->id, 'size' => '32', 'sku' => 'ACC-BELT-32', 'status' => 'available']);
+            Inventory::create(['product_id' => $accesorios2->id, 'size' => '34', 'sku' => 'ACC-BELT-34', 'status' => 'available']);
+
+            // A3. Lazo / Michi de Gala
+            $accesorios3 = Product::create([
+                'category_id' => $categoryAccesorios->id,
+                'name' => 'Lazo / Michi de Gala',
+                'slug' => 'lazo-michi-gala',
+                'description' => 'Michi clásico ajustable en satén negro, ideal para smoking.',
+                'price_per_day' => 5.00,
+                'security_deposit' => 10.00,
+                'image_url' => 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?q=80&w=800&auto=format&fit=crop',
+                'specifications' => [
+                    ['label' => 'Material', 'value' => 'Seda satinada'],
+                    ['label' => 'Ajuste', 'value' => 'Regulable con broche'],
+                    ['label' => 'Color', 'value' => 'Negro']
+                ]
+            ]);
+            Inventory::create(['product_id' => $accesorios3->id, 'size' => 'Única', 'sku' => 'ACC-BOW-001', 'status' => 'available']);
+        }
     }
 }

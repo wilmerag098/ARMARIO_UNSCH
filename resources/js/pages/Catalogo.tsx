@@ -177,6 +177,11 @@ export default function Catalogo({ products, categories }: { products: any[], ca
                                     >
                                         {/* Image Area */}
                                         <div className="relative aspect-[4/4.5] overflow-hidden bg-[#120202]">
+                                            {product.discount_percent > 0 && (
+                                                <div className="absolute top-4 right-4 bg-red-600 text-white text-[11px] font-black px-2.5 py-1.5 rounded-lg shadow-md border border-red-700 z-10">
+                                                    -{product.discount_percent}%
+                                                </div>
+                                            )}
                                             <img 
                                                 src={product.image_url || 'https://images.unsplash.com/photo-1593030761757-71fae45fa0e7?q=80&w=800&auto=format&fit=crop'} 
                                                 alt={product.name} 
@@ -226,10 +231,22 @@ export default function Catalogo({ products, categories }: { products: any[], ca
                                             <div className="flex justify-between items-center mt-4">
                                                 <div>
                                                     <p className="text-[10px] text-[#d2a9b1]/50 font-bold uppercase tracking-wider mb-1">PRECIO</p>
-                                                    <p className="text-[20px] font-extrabold text-[#facc15]">
-                                                        S/ {parseFloat(product.price_per_day).toFixed(2)}
-                                                        <span className="text-[11px] font-normal text-white/60"> / día</span>
-                                                    </p>
+                                                    {product.discount_percent > 0 ? (
+                                                        <div className="flex flex-col">
+                                                            <span className="text-[11px] text-white/40 line-through mb-0.5">
+                                                                S/ {parseFloat(product.price_per_day).toFixed(2)}
+                                                            </span>
+                                                            <p className="text-[20px] font-extrabold text-[#facc15] leading-none">
+                                                                S/ {parseFloat(product.discounted_price_per_day).toFixed(2)}
+                                                                <span className="text-[11px] font-normal text-white/60"> / día</span>
+                                                            </p>
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-[20px] font-extrabold text-[#facc15]">
+                                                            S/ {parseFloat(product.price_per_day).toFixed(2)}
+                                                            <span className="text-[11px] font-normal text-white/60"> / día</span>
+                                                        </p>
+                                                    )}
                                                 </div>
 
                                                 {/* Action Button */}

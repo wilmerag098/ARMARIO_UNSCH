@@ -105,6 +105,13 @@ export default function Producto({ product }: { product: any }) {
                                         CYBER WOW
                                     </div>
 
+                                    {/* Discount badge */}
+                                    {product?.discount_percent > 0 && (
+                                        <div className="absolute top-4 right-16 bg-red-600 text-white text-xs font-black px-3 py-2 rounded-lg shadow-md border border-red-700 z-10 flex items-center justify-center">
+                                            -{product.discount_percent}%
+                                        </div>
+                                    )}
+
                                     {/* Heart Button */}
                                     <button className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center text-white/70 hover:text-[#ffb6c5] hover:scale-110 active:scale-95 transition-all">
                                         <Heart size={18} />
@@ -269,10 +276,22 @@ export default function Producto({ product }: { product: any }) {
                             <div className="flex justify-between items-center mt-6">
                                 <div>
                                     <p className="text-[10px] text-white/50 font-bold uppercase tracking-wider mb-1">PRECIO DE RENTA</p>
-                                    <p className="text-[26px] font-extrabold text-[#facc15] leading-none">
-                                        S/ {parseFloat(product?.price_per_day || 0).toFixed(2)}
-                                        <span className="text-[11px] font-normal text-white/60"> / día</span>
-                                    </p>
+                                    {product?.discount_percent > 0 ? (
+                                        <div className="flex flex-col">
+                                            <span className="text-xs text-white/40 line-through mb-1">
+                                                S/ {parseFloat(product?.price_per_day || 0).toFixed(2)}
+                                            </span>
+                                            <p className="text-[26px] font-extrabold text-[#facc15] leading-none">
+                                                S/ {parseFloat(product?.discounted_price_per_day || 0).toFixed(2)}
+                                                <span className="text-[11px] font-normal text-white/60"> / día</span>
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <p className="text-[26px] font-extrabold text-[#facc15] leading-none">
+                                            S/ {parseFloat(product?.price_per_day || 0).toFixed(2)}
+                                            <span className="text-[11px] font-normal text-white/60"> / día</span>
+                                        </p>
+                                    )}
                                 </div>
 
                                 {/* Action Button */}

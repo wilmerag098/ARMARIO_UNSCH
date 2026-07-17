@@ -91,6 +91,11 @@ export default function Welcome({ products }: { products: any[] }) {
                                         <div className={`absolute top-3 left-3 z-10 text-[10px] font-extrabold px-2.5 py-1 rounded-md uppercase tracking-wider ${isAvailable ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`}>
                                             {isAvailable ? 'DISPONIBLE' : 'RESERVADO'}
                                         </div>
+                                        {prod.discount_percent > 0 && (
+                                            <div className="absolute top-3 right-3 z-10 bg-red-600 text-white text-[11px] font-black px-2.5 py-1 rounded-md shadow-md border border-red-700">
+                                                -{prod.discount_percent}%
+                                            </div>
+                                        )}
                                         <img 
                                             src={prod.image_url || 'https://images.unsplash.com/photo-1593030761757-71fae45fa0e7?q=80&w=800&auto=format&fit=crop'} 
                                             alt={prod.name}
@@ -107,7 +112,18 @@ export default function Welcome({ products }: { products: any[] }) {
                                     </div>
                                     <div className="flex items-center justify-between mt-auto pt-2 border-t border-[#3a0d16]/30">
                                         <div className="text-white/80">
-                                            <span className="font-extrabold text-[#facc15] text-lg">S/ {parseFloat(prod.price_per_day).toFixed(2)}</span> <span className="text-xs text-white/50">/día</span>
+                                            {prod.discount_percent > 0 ? (
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] text-white/40 line-through">S/ {parseFloat(prod.price_per_day).toFixed(2)}</span>
+                                                    <div>
+                                                        <span className="font-extrabold text-[#facc15] text-lg">S/ {parseFloat(prod.discounted_price_per_day).toFixed(2)}</span> <span className="text-xs text-white/50">/día</span>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div>
+                                                    <span className="font-extrabold text-[#facc15] text-lg">S/ {parseFloat(prod.price_per_day).toFixed(2)}</span> <span className="text-xs text-white/50">/día</span>
+                                                </div>
+                                            )}
                                         </div>
                                         <Link 
                                             href={`/producto/${prod.slug}`} 

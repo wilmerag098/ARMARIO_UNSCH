@@ -2,7 +2,7 @@ import { Head, Link, usePage, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import { ArrowLeft, HelpCircle, Check, CreditCard, QrCode, Building, Lock, AlertCircle, MapPin, Home } from 'lucide-react';
 
-export default function Checkout({ product }: { product: any }) {
+export default function Checkout({ product, accessories = [], promotion }: { product: any; accessories?: any[]; promotion?: any }) {
     const { auth } = usePage().props;
     const [step, setStep] = useState(1);
     const [paymentMethod, setPaymentMethod] = useState('yape');
@@ -22,20 +22,48 @@ export default function Checkout({ product }: { product: any }) {
         address: '',
         email: '',
         password: '',
+        accessories: [] as { product_id: number; inventory_id: number }[],
     });
 
     const calculateTotal = () => {
         const start = new Date(data.start_date);
         const end = new Date(data.end_date);
         const diffTime = Math.abs(end.getTime() - start.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        const diffDays = isNaN(start.getTime()) || isNaN(end.getTime()) ? 0 : Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
-        const subtotal = product?.price_per_day * diffDays;
+        const mainPrice = parseFloat(product?.discounted_price_per_day || product?.price_per_day) || 0;
+        const mainSubtotal = mainPrice * diffDays;
+
+        let accessoriesSubtotal = 0;
+        data.accessories.forEach((item) => {
+            const acc = accessories.find((a) => a.id === item.product_id);
+            if (acc) {
+                const accPrice = parseFloat(acc?.discounted_price_per_day || acc?.price_per_day) || 0;
+                accessoriesSubtotal += accPrice * diffDays;
+            }
+        });
+
+        let discountAmount = 0;
+        const isPromoApplicable = promotion && (mainSubtotal > parseFloat(promotion.min_amount));
+        if (isPromoApplicable && accessoriesSubtotal > 0) {
+            discountAmount = accessoriesSubtotal * (parseFloat(promotion.discount_percentage) / 100);
+        }
+
         const serviceFee = 15;
-        return { diffDays, subtotal, serviceFee, total: subtotal + serviceFee };
+        const total = mainSubtotal + accessoriesSubtotal - discountAmount + serviceFee;
+
+        return { 
+            diffDays, 
+            subtotal: mainSubtotal, 
+            accessoriesSubtotal, 
+            discountAmount, 
+            isPromoApplicable,
+            serviceFee, 
+            total 
+        };
     };
 
-    const { diffDays, subtotal, serviceFee, total } = calculateTotal();
+    const { diffDays, subtotal, accessoriesSubtotal, discountAmount, isPromoApplicable, serviceFee, total } = calculateTotal();
 
     const handleCheckoutSubmit = () => {
         post('/checkout', {
@@ -324,6 +352,61 @@ export default function Checkout({ product }: { product: any }) {
                                             ))}
                                         </select>
                                     </div>
+
+                                    {accessories.length > 0 && (
+                                        <div className="pt-6 border-t border-[#3a0d16]/30">
+                                            <h3 className="text-base font-bold text-[#ffb6c5] mb-2">¡Completa tu outfit!</h3>
+                                            <p className="text-xs text-white/50 mb-4">
+                                                Alquila accesorios adicionales. Si tu renta principal supera los S/ 100.00, obtienes un 15% de descuento automático en ellos.
+                                            </p>
+                                            
+                                            {isPromoApplicable && (
+                                                <div className="bg-[#ffb6c5]/10 border border-[#ffb6c5]/20 p-3 rounded-xl mb-4 text-xs text-[#ffb6c5] flex flex-col gap-1">
+                                                    <span className="font-bold uppercase tracking-wider text-[10px]">¡Promoción Aplicada!</span>
+                                                    <span>15% de descuento en accesorios activado (Renta principal &gt; S/ 100.00)</span>
+                                                </div>
+                                            )}
+
+                                            <div className="grid grid-cols-1 gap-3">
+                                                {accessories.map((acc: any) => {
+                                                    const isChecked = data.accessories.some((item) => item.product_id === acc.id);
+                                                    const availableInv = acc.inventories?.[0]; // Grab first available inventory item
+                                                    
+                                                    const handleCheckboxChange = () => {
+                                                        if (isChecked) {
+                                                            setData('accessories', data.accessories.filter((item) => item.product_id !== acc.id));
+                                                        } else if (availableInv) {
+                                                            setData('accessories', [...data.accessories, { product_id: acc.id, inventory_id: availableInv.id }]);
+                                                        }
+                                                    };
+
+                                                    return (
+                                                        <div 
+                                                            key={acc.id} 
+                                                            onClick={handleCheckboxChange}
+                                                            className={`flex items-center gap-3 p-3 bg-[#120202]/40 border rounded-xl cursor-pointer select-none transition-all ${
+                                                                isChecked ? 'border-[#ffb6c5] bg-[#23060c]/20' : 'border-[#3a0d16] hover:border-[#ffb6c5]/40'
+                                                            }`}
+                                                        >
+                                                            <div className={`w-5 h-5 rounded flex items-center justify-center border transition-all ${
+                                                                isChecked ? 'bg-[#ffb6c5] border-[#ffb6c5] text-[#1b0308]' : 'border-white/30 text-transparent'
+                                                            }`}>
+                                                                <Check size={14} strokeWidth={3} />
+                                                            </div>
+                                                            <div className="w-12 h-16 rounded overflow-hidden shrink-0 bg-neutral-900 border border-[#3a0d16]/30">
+                                                                <img src={acc.image_url} alt={acc.name} className="w-full h-full object-cover" />
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <h4 className="text-xs font-bold text-white truncate">{acc.name}</h4>
+                                                                <p className="text-[10px] text-white/50">{acc.inventories?.[0] ? `Talla ${acc.inventories[0].size}` : 'Stock disponible'}</p>
+                                                                <p className="text-xs font-bold text-[#ffb6c5] mt-1">S/ {parseFloat(acc.price_per_day).toFixed(2)} / día</p>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -335,6 +418,18 @@ export default function Checkout({ product }: { product: any }) {
                                     <span className="text-white/70">Días ({diffDays})</span>
                                     <span className="text-white font-medium">S/ {subtotal.toFixed(2)}</span>
                                 </div>
+                                {accessoriesSubtotal > 0 && (
+                                    <div className="flex justify-between">
+                                        <span className="text-white/70">Accesorios ({diffDays} d.)</span>
+                                        <span className="text-white font-medium">S/ {accessoriesSubtotal.toFixed(2)}</span>
+                                    </div>
+                                )}
+                                {discountAmount > 0 && (
+                                    <div className="flex justify-between text-green-400 font-medium bg-green-500/10 p-2 rounded-lg">
+                                        <span className="text-xs">Descuento (15% Accesorios)</span>
+                                        <span className="text-xs">- S/ {discountAmount.toFixed(2)}</span>
+                                    </div>
+                                )}
                                 <div className="flex justify-between">
                                     <span className="text-white/70">Tarifa de Servicio</span>
                                     <span className="text-white font-medium">S/ {serviceFee.toFixed(2)}</span>
@@ -405,6 +500,13 @@ export default function Checkout({ product }: { product: any }) {
 
                         <div className="lg:w-[380px] w-full bg-[#1f050b] border border-[#3a0d16] rounded-2xl p-6 md:p-8 shadow-xl">
                             <h3 className="text-xl font-bold text-white mb-6">Total a Pagar</h3>
+
+                            {discountAmount > 0 && (
+                                <div className="flex justify-between items-center mb-3 text-sm text-green-400 font-medium bg-green-500/10 p-2 rounded-lg">
+                                    <span>Descuento aplicado</span>
+                                    <span>- S/ {discountAmount.toFixed(2)}</span>
+                                </div>
+                            )}
 
                             <div className="flex justify-between items-center mb-6">
                                 <span className="text-base font-bold text-white">Total</span>
