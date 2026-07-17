@@ -16,9 +16,18 @@ interface Reservation {
         email: string;
     };
     items?: Array<{
+        id: number;
+        price_at_time: string | number;
+        subtotal: string | number;
+        color?: string;
         product?: {
             name: string;
-        }
+            image_url?: string;
+        };
+        inventory?: {
+            size: string;
+            sku: string;
+        };
     }>;
 }
 
@@ -207,6 +216,39 @@ export default function Reservations({ reservations }: ReservationsProps) {
                             <div className="flex justify-between">
                                 <span className="text-[#d2a9b1]">Total a pagar:</span>
                                 <span className="font-bold text-[#ffb6c5]">S/ {Number(selectedReservation?.total_amount).toFixed(2)}</span>
+                            </div>
+                        </div>
+
+                        {/* Reserved items */}
+                        <div className="space-y-2 mt-4">
+                            <span className="block text-xs font-semibold text-[#ffb6c5] uppercase tracking-wider">
+                                Prendas Reservadas
+                            </span>
+                            <div className="space-y-2 max-h-48 overflow-y-auto scrollbar-thin">
+                                {selectedReservation?.items?.map((item: any) => (
+                                    <div key={item.id} className="bg-[#120204]/40 border border-[#290a0f] rounded-2xl p-3 flex gap-3 text-xs items-center">
+                                        {item.product?.image_url ? (
+                                            <img src={item.product.image_url} alt="" className="w-10 h-14 object-cover rounded bg-[#120204]" />
+                                        ) : (
+                                            <div className="w-10 h-14 bg-neutral-800 rounded flex items-center justify-center text-[#ffb6c5]">
+                                                👗
+                                            </div>
+                                        )}
+                                        <div className="flex-grow min-w-0">
+                                            <p className="font-bold text-white truncate">{item.product?.name}</p>
+                                            <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-white/60 mt-1">
+                                                <span>Talla: <span className="font-semibold text-[#ffb6c5]">{item.inventory?.size || 'N/A'}</span></span>
+                                                {item.color && (
+                                                    <>
+                                                        <span>|</span>
+                                                        <span>Color: <span className="font-semibold text-[#ffb6c5]">{item.color}</span></span>
+                                                    </>
+                                                )}
+                                            </div>
+                                            <p className="text-white/40 mt-1 font-mono text-[9px]">{item.inventory?.sku}</p>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
 

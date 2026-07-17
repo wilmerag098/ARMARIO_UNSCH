@@ -10,7 +10,7 @@ class ReservationItem extends Model
     use HasFactory;
 
     protected $fillable = [
-        'reservation_id', 'product_id', 'inventory_id', 'price_at_time', 'start_date', 'end_date', 'subtotal'
+        'reservation_id', 'product_id', 'inventory_id', 'color', 'price_at_time', 'start_date', 'end_date', 'subtotal'
     ];
 
     public function reservation()

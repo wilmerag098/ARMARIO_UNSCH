@@ -42,6 +42,7 @@ export default function Producto({ product }: { product: any }) {
         const firstAvailable = product?.inventories?.find((i: any) => i.status === 'available');
         return firstAvailable ? firstAvailable.size : (product?.inventories?.[0]?.size || 'M');
     });
+    const [selectedColor, setSelectedColor] = useState<string>('');
 
     const getInventoryForSize = (size: string) => {
         return product?.inventories?.find((i: any) => i.size === size);
@@ -268,6 +269,40 @@ export default function Producto({ product }: { product: any }) {
                                     )}
                                 </p>
                             </div>
+
+                            {/* Optional Color Selector Box */}
+                            {product?.colors && product.colors.length > 0 && (
+                                <div className="bg-[#222222] border border-[#333333] rounded-2xl p-5 mb-8">
+                                    <p className="text-xs text-white/60 font-semibold uppercase tracking-wider mb-3">
+                                        Seleccionar Color (Opcional):
+                                    </p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {product.colors.map((color: string) => {
+                                            const isSelected = color === selectedColor;
+                                            return (
+                                                <button
+                                                    key={color}
+                                                    type="button"
+                                                    onClick={() => setSelectedColor(isSelected ? '' : color)}
+                                                    className={`px-4 py-2 rounded-xl border text-xs font-bold transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
+                                                        isSelected
+                                                            ? 'bg-[#facc15] border-[#facc15] text-black scale-95 shadow-md shadow-[#facc15]/10'
+                                                            : 'bg-[#1a1a1a] border-[#333333] text-white/80 hover:border-white/50 hover:text-white'
+                                                    }`}
+                                                >
+                                                    {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-black"></span>}
+                                                    <span>{color}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    {selectedColor && (
+                                        <p className="text-[10px] text-white/40 mt-3">
+                                            Color seleccionado: <span className="font-bold text-white">{selectedColor}</span> (Haz clic de nuevo para deseleccionar).
+                                        </p>
+                                    )}
+                                </div>
+                            )}
 
                             {/* Divider Line */}
                             <div className="border-t border-[#2e2e2e] my-4"></div>
@@ -512,6 +547,7 @@ export default function Producto({ product }: { product: any }) {
                 onClose={() => setIsCartOpen(false)} 
                 product={product} 
                 selectedSize={selectedSize} 
+                selectedColor={selectedColor}
             />
         </PublicLayout>
     );

@@ -42,6 +42,7 @@ class CheckoutController extends Controller
         $validated = $request->validate([
             'product_id' => 'required|exists:products,id',
             'inventory_id' => 'required|exists:inventories,id',
+            'color' => 'nullable|string',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
             'accessories' => 'nullable|array',
@@ -78,6 +79,7 @@ class CheckoutController extends Controller
             [
                 'product_id' => $product->id,
                 'inventory_id' => $validated['inventory_id'],
+                'color' => $validated['color'] ?? null,
                 'price_at_time' => $product->discounted_price_per_day,
                 'subtotal' => $mainSubtotal
             ]
@@ -101,6 +103,7 @@ class CheckoutController extends Controller
                 $itemsToCreate[] = [
                     'product_id' => $accProduct->id,
                     'inventory_id' => $accData['inventory_id'],
+                    'color' => null,
                     'price_at_time' => $accProduct->price_per_day,
                     'subtotal' => $accSubtotalAfterDiscount
                 ];
@@ -131,6 +134,7 @@ class CheckoutController extends Controller
                 'reservation_id' => $reservation->id,
                 'product_id' => $item['product_id'],
                 'inventory_id' => $item['inventory_id'],
+                'color' => $item['color'] ?? null,
                 'price_at_time' => $item['price_at_time'],
                 'start_date' => $validated['start_date'],
                 'end_date' => $validated['end_date'],

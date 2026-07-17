@@ -55,6 +55,8 @@ export default function Products({ products, categories }: ProductsProps) {
         security_deposit: '',
         description: '',
         sizes: [] as string[],
+        colors: [] as string[],
+        quantities: {} as Record<string, number>,
         images: [null, null, null, null, null] as (File | null)[],
         existing_images: [null, null, null, null, null] as (string | null)[],
         primary_image_index: 0,
@@ -63,9 +65,20 @@ export default function Products({ products, categories }: ProductsProps) {
 
     const handleSizeToggle = (size: string) => {
         if (data.sizes.includes(size)) {
-            setData('sizes', data.sizes.filter((s) => s !== size));
+            const nextSizes = data.sizes.filter((s) => s !== size);
+            const nextQuantities = { ...data.quantities };
+            delete nextQuantities[size];
+            setData({
+                ...data,
+                sizes: nextSizes,
+                quantities: nextQuantities
+            });
         } else {
-            setData('sizes', [...data.sizes, size]);
+            setData({
+                ...data,
+                sizes: [...data.sizes, size],
+                quantities: { ...data.quantities, [size]: 1 }
+            });
         }
     };
 
@@ -134,6 +147,13 @@ export default function Products({ products, categories }: ProductsProps) {
 
         // Get sizes from inventories
         const sizes = product.inventories ? product.inventories.map((inv: any) => inv.size) : [];
+        const uniqueSizes = Array.from(new Set(sizes));
+
+        // Get quantities per size from inventories
+        const quantities: Record<string, number> = {};
+        product.inventories?.forEach((inv: any) => {
+            quantities[inv.size] = (quantities[inv.size] || 0) + 1;
+        });
 
         setData({
             name: product.name,
@@ -141,7 +161,9 @@ export default function Products({ products, categories }: ProductsProps) {
             price_per_day: String(product.price_per_day),
             security_deposit: String(product.security_deposit),
             description: product.description || '',
-            sizes: sizes,
+            sizes: uniqueSizes,
+            colors: (product as any).colors || [],
+            quantities: quantities,
             images: [null, null, null, null, null],
             existing_images: existingImgs,
             primary_image_index: primaryIndex !== -1 ? primaryIndex : 0,
@@ -477,31 +499,66 @@ export default function Products({ products, categories }: ProductsProps) {
                                     </div>
 
                                     {/* Tallas disponibles */}
-                                    <div className="space-y-1.5">
-                                        <span className="block text-sm font-semibold text-[#ffb6c5]">
-                                            Tallas Disponibles
-                                        </span>
-                                        <div className="flex gap-3">
-                                            {['S', 'M', 'L', 'XL'].map((size) => {
-                                                const isSelected = data.sizes.includes(size);
-                                                return (
-                                                    <button
-                                                        type="button"
-                                                        key={size}
-                                                        onClick={() => handleSizeToggle(size)}
-                                                        className={`h-10 w-12 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-200 cursor-pointer ${
-                                                            isSelected 
-                                                                ? 'bg-[#ffb6c5] text-[#120202] shadow-md shadow-[#ffb6c5]/20 scale-105' 
-                                                                : 'bg-[#1e0509] border border-[#571e26] text-[#ffb6c5] hover:border-[#ffb6c5]'
-                                                        }`}
-                                                    >
-                                                        {size}
-                                                    </button>
-                                                );
-                                            })}
+                                    <div className="space-y-3">
+                                        <div className="space-y-1.5">
+                                            <span className="block text-sm font-semibold text-[#ffb6c5]">
+                                                Tallas Disponibles
+                                            </span>
+                                            <div className="flex flex-wrap gap-3">
+                                                {['XS', 'S', 'M', 'L', 'XL'].map((size) => {
+                                                    const isSelected = data.sizes.includes(size);
+                                                    return (
+                                                        <button
+                                                            type="button"
+                                                            key={size}
+                                                            onClick={() => handleSizeToggle(size)}
+                                                            className={`h-10 w-12 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-200 cursor-pointer ${
+                                                                isSelected 
+                                                                    ? 'bg-[#ffb6c5] text-[#120202] shadow-md shadow-[#ffb6c5]/20 scale-105' 
+                                                                    : 'bg-[#1e0509] border border-[#571e26] text-[#ffb6c5] hover:border-[#ffb6c5]'
+                                                            }`}
+                                                        >
+                                                            {size}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                            {errors.sizes && (
+                                                <span className="text-red-400 text-xs block">{errors.sizes}</span>
+                                            )}
                                         </div>
-                                        {errors.sizes && (
-                                            <span className="text-red-400 text-xs block">{errors.sizes}</span>
+
+                                        {/* Cantidades por talla */}
+                                        {data.sizes.length > 0 && (
+                                            <div className="bg-[#1e0509]/30 border border-[#571e26]/30 rounded-2xl p-4 space-y-3">
+                                                <span className="block text-xs font-bold uppercase tracking-wider text-[#ffb6c5]">
+                                                    Cantidad por Talla (Stock de Prendas)
+                                                </span>
+                                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                                    {data.sizes.map((size) => (
+                                                        <div key={size} className="flex items-center justify-between bg-[#1a0407] border border-[#571e26]/50 rounded-xl px-3 py-2">
+                                                            <span className="text-xs font-bold text-white">Talla {size}</span>
+                                                            <input
+                                                                type="number"
+                                                                min="1"
+                                                                value={data.quantities[size] || 1}
+                                                                onChange={(e) => {
+                                                                    const val = parseInt(e.target.value) || 1;
+                                                                    setData('quantities', {
+                                                                        ...data.quantities,
+                                                                        [size]: val < 1 ? 1 : val
+                                                                    });
+                                                                }}
+                                                                className="w-14 bg-[#120202] border border-[#571e26]/60 rounded-lg px-1.5 py-1 text-center text-white focus:outline-none focus:border-[#ffb6c5] text-xs font-semibold"
+                                                                required
+                                                            />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                {errors.quantities && (
+                                                    <span className="text-red-400 text-xs block">{errors.quantities}</span>
+                                                )}
+                                            </div>
                                         )}
                                     </div>
 
@@ -561,6 +618,70 @@ export default function Products({ products, categories }: ProductsProps) {
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+
+                            {/* Colores disponibles */}
+                            <div className="space-y-1.5">
+                                <label className="block text-sm font-semibold text-[#ffb6c5]">
+                                    Colores Disponibles (Opcional)
+                                </label>
+                                <div className="flex gap-2">
+                                    <input 
+                                        type="text" 
+                                        id="new-color-input"
+                                        placeholder="Ej. Negro, Azul, Rojo (Presione Enter para añadir)"
+                                        className="bg-[#1e0509] border border-[#571e26] rounded-xl px-4 py-3 text-white placeholder-stone-500 flex-grow focus:outline-none focus:border-[#ffb6c5] transition-all text-sm"
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                const target = e.target as HTMLInputElement;
+                                                const val = target.value.trim();
+                                                if (val && !data.colors.includes(val)) {
+                                                    setData('colors', [...data.colors, val]);
+                                                    target.value = '';
+                                                }
+                                            }
+                                        }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const input = document.getElementById('new-color-input') as HTMLInputElement;
+                                            const val = input?.value.trim();
+                                            if (val && !data.colors.includes(val)) {
+                                                setData('colors', [...data.colors, val]);
+                                                input.value = '';
+                                            }
+                                        }}
+                                        className="bg-[#571e26] hover:bg-[#ffb6c5] hover:text-[#120202] text-[#ffb6c5] font-bold px-4 rounded-xl border border-[#571e26] transition-all text-xs cursor-pointer"
+                                    >
+                                        Añadir
+                                    </button>
+                                </div>
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                    {data.colors && data.colors.map((color) => (
+                                        <span 
+                                            key={color} 
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#571e26] text-white border border-[#ebd7da]/10 shadow-sm"
+                                        >
+                                            {color}
+                                            <button
+                                                type="button"
+                                                onClick={() => setData('colors', data.colors.filter((c) => c !== color))}
+                                                className="text-white/60 hover:text-red-400 font-bold hover:scale-110 transition-all cursor-pointer"
+                                                title={`Eliminar ${color}`}
+                                            >
+                                                <X className="h-3.5 w-3.5" />
+                                            </button>
+                                        </span>
+                                    ))}
+                                    {(!data.colors || data.colors.length === 0) && (
+                                        <span className="text-xs text-[#ffb6c5]/50 italic">Ningún color añadido. La selección será libre para el cliente.</span>
+                                    )}
+                                </div>
+                                {errors.colors && (
+                                    <span className="text-red-400 text-xs block">{errors.colors}</span>
+                                )}
                             </div>
 
                             {/* Descripcion */}

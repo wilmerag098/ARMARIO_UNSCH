@@ -126,7 +126,7 @@ export default function Catalogo({ products, categories }: { products: any[], ca
                                 >
                                     Todo
                                 </button>
-                                {['S', 'M', 'L', 'XL'].map((talla) => (
+                                {['XS', 'S', 'M', 'L', 'XL'].map((talla) => (
                                     <button 
                                         key={talla}
                                         onClick={() => setSelectedSize(talla)}

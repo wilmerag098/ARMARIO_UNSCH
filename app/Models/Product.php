@@ -11,12 +11,13 @@ class Product extends Model
 
     protected $fillable = [
         'category_id', 'name', 'slug', 'description', 
-        'price_per_day', 'security_deposit', 'image_url', 'images', 'specifications'
+        'price_per_day', 'security_deposit', 'image_url', 'images', 'specifications', 'colors', 'status'
     ];
 
     protected $casts = [
         'specifications' => 'array',
         'images' => 'array',
+        'colors' => 'array',
     ];
 
     protected $appends = [

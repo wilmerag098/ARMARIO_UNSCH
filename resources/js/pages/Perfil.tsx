@@ -140,8 +140,12 @@ export default function Perfil({ reservations }: { reservations: any[] }) {
                                                     <img src={res.items[0]?.product?.image_url} alt="Prod" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                                                 </div>
                                                 <div>
-                                                    <h3 className="text-sm font-bold text-white mb-1.5 leading-tight">{res.items[0]?.product?.name}</h3>
-                                                    <p className="text-xs text-white/50 flex items-center gap-1.5"><Calendar size={12}/> {res.start_date}</p>
+                                                    <h3 className="text-sm font-bold text-white mb-1 leading-tight">{res.items[0]?.product?.name}</h3>
+                                                    <p className="text-[10px] text-[#ffb6c5] mb-1 font-semibold">
+                                                        Talla: {res.items[0]?.inventory?.size || 'N/A'}
+                                                        {res.items[0]?.color && ` | Color: ${res.items[0]?.color}`}
+                                                    </p>
+                                                    <p className="text-[10px] text-white/50 flex items-center gap-1.5"><Calendar size={11}/> {res.start_date}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -193,8 +197,12 @@ export default function Perfil({ reservations }: { reservations: any[] }) {
                                             <img src={res.items[0]?.product?.image_url} alt="Prod" className="w-full h-full object-cover" />
                                         </div>
                                         <div className="flex-1">
-                                            <h4 className="font-bold text-white mb-1">{res.items[0]?.product?.name}</h4>
-                                            <p className="text-xs text-white/50 mb-2">Reserva #{res.id}</p>
+                                            <h4 className="font-bold text-white mb-0.5">{res.items[0]?.product?.name}</h4>
+                                            <p className="text-xs text-[#ffb6c5] mb-1 font-semibold">
+                                                Talla: {res.items[0]?.inventory?.size || 'N/A'}
+                                                {res.items[0]?.color && ` | Color: ${res.items[0]?.color}`}
+                                            </p>
+                                            <p className="text-[11px] text-white/50 mb-2">Reserva #{res.id}</p>
                                             <div className="mt-1">
                                                 {getStatusBadge(res.status)}
                                             </div>

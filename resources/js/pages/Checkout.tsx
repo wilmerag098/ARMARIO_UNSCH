@@ -8,6 +8,7 @@ export default function Checkout({ product, accessories = [], promotion }: { pro
     const [paymentMethod, setPaymentMethod] = useState('yape');
 
     const sizeParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('size') : '';
+    const colorParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('color') : '';
     const startParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('start') : null;
     const endParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('end') : null;
     const initialInventory = product?.inventories?.find((i: any) => i.size === sizeParam) || product?.inventories?.[0];
@@ -15,6 +16,7 @@ export default function Checkout({ product, accessories = [], promotion }: { pro
     const { data, setData, post, processing, errors } = useForm({
         product_id: product?.id,
         inventory_id: initialInventory?.id || '',
+        color: colorParam || '',
         start_date: startParam || new Date().toISOString().split('T')[0],
         end_date: endParam || new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0],
         name: '',
@@ -352,6 +354,22 @@ export default function Checkout({ product, accessories = [], promotion }: { pro
                                             ))}
                                         </select>
                                     </div>
+
+                                    {product?.colors && product.colors.length > 0 && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-white/80 mb-2">Color (Opcional)</label>
+                                            <select
+                                                value={data.color}
+                                                onChange={e => setData('color', e.target.value)}
+                                                className="w-full bg-[#120202] border border-[#3a0d16] text-white rounded-xl px-4 py-3 focus:outline-none focus:border-[#ffb6c5] transition-colors"
+                                            >
+                                                <option value="">Seleccionar Color (Sin color específico)</option>
+                                                {product.colors.map((color: string) => (
+                                                    <option key={color} value={color}>{color}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
 
                                     {accessories.length > 0 && (
                                         <div className="pt-6 border-t border-[#3a0d16]/30">

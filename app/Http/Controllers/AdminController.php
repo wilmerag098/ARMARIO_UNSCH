@@ -111,6 +111,10 @@ class AdminController extends Controller
             'images' => 'required|array|min:1|max:5',
             'images.*' => 'image|max:5120',
             'primary_image_index' => 'required|integer|min:0|max:4',
+            'colors' => 'nullable|array',
+            'colors.*' => 'nullable|string|max:50',
+            'quantities' => 'required|array',
+            'quantities.*' => 'required|integer|min:1',
         ]);
 
         $imageUrls = [];
@@ -158,20 +162,24 @@ class AdminController extends Controller
             'image_url' => $primaryImageUrl,
             'images' => array_values($imageUrls),
             'specifications' => $specifications,
+            'colors' => $request->colors ?? [],
         ]);
 
         foreach ($request->sizes as $size) {
-            $sku = strtoupper(substr($slug, 0, 3)) . '-' . $size . '-' . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
-            while (Inventory::where('sku', $sku)->exists()) {
-                $sku = strtoupper(substr($slug, 0, 3)) . '-' . $size . '-' . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
-            }
+            $qty = intval($request->quantities[$size] ?? 1);
+            for ($i = 0; $i < $qty; $i++) {
+                $sku = strtoupper(substr($slug, 0, 3)) . '-' . $size . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
+                while (Inventory::where('sku', $sku)->exists()) {
+                    $sku = strtoupper(substr($slug, 0, 3)) . '-' . $size . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
+                }
 
-            Inventory::create([
-                'product_id' => $product->id,
-                'size' => $size,
-                'sku' => $sku,
-                'status' => 'available',
-            ]);
+                Inventory::create([
+                    'product_id' => $product->id,
+                    'size' => $size,
+                    'sku' => $sku,
+                    'status' => 'available',
+                ]);
+            }
         }
 
         return redirect()->route('admin.products')->with('success', 'Prenda registrada correctamente.');
@@ -197,6 +205,10 @@ class AdminController extends Controller
             'images.*' => 'image|max:5120',
             'existing_images' => 'nullable|array',
             'primary_image_index' => 'required|integer|min:0|max:4',
+            'colors' => 'nullable|array',
+            'colors.*' => 'nullable|string|max:50',
+            'quantities' => 'required|array',
+            'quantities.*' => 'required|integer|min:1',
         ]);
 
         $finalImageUrls = [null, null, null, null, null];
@@ -248,28 +260,50 @@ class AdminController extends Controller
             'security_deposit' => $securityDeposit,
             'image_url' => $primaryImageUrl,
             'images' => $imageUrls,
+            'colors' => $request->colors ?? [],
         ]);
 
         $existingSizes = $product->inventories()->pluck('size')->toArray();
         $newSizes = $request->sizes;
 
-        foreach (array_diff($newSizes, $existingSizes) as $size) {
-            $sku = strtoupper(substr($slug, 0, 3)) . '-' . $size . '-' . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
-            while (Inventory::where('sku', $sku)->exists()) {
-                $sku = strtoupper(substr($slug, 0, 3)) . '-' . $size . '-' . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
-            }
-
-            Inventory::create([
-                'product_id' => $product->id,
-                'size' => $size,
-                'sku' => $sku,
-                'status' => 'available',
-            ]);
-        }
-
+        // 1. Remove inventories for sizes that are completely deselected
         $removedSizes = array_diff($existingSizes, $newSizes);
         if (count($removedSizes) > 0) {
             $product->inventories()->whereIn('size', $removedSizes)->delete();
+        }
+
+        // 2. Adjust inventories for sizes that are selected
+        foreach ($newSizes as $size) {
+            $targetQty = intval($request->quantities[$size] ?? 1);
+            $currentQty = $product->inventories()->where('size', $size)->count();
+
+            if ($currentQty < $targetQty) {
+                $needed = $targetQty - $currentQty;
+                for ($i = 0; $i < $needed; $i++) {
+                    $sku = strtoupper(substr($slug, 0, 3)) . '-' . $size . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
+                    while (Inventory::where('sku', $sku)->exists()) {
+                        $sku = strtoupper(substr($slug, 0, 3)) . '-' . $size . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
+                    }
+                    Inventory::create([
+                        'product_id' => $product->id,
+                        'size' => $size,
+                        'sku' => $sku,
+                        'status' => 'available',
+                    ]);
+                }
+            } elseif ($currentQty > $targetQty) {
+                $toDeleteCount = $currentQty - $targetQty;
+                $inventoriesToDelete = $product->inventories()
+                    ->where('size', $size)
+                    ->where('status', 'available')
+                    ->orderBy('created_at', 'desc')
+                    ->take($toDeleteCount)
+                    ->get();
+                
+                foreach ($inventoriesToDelete as $inv) {
+                    $inv->delete();
+                }
+            }
         }
 
         return redirect()->route('admin.products')->with('success', 'Prenda actualizada correctamente.');
@@ -294,7 +328,7 @@ class AdminController extends Controller
 
     public function reservations()
     {
-        $reservations = Reservation::with(['user', 'items.product'])
+        $reservations = Reservation::with(['user', 'items.product', 'items.inventory'])
             ->orderBy('created_at', 'desc')
             ->get();
 

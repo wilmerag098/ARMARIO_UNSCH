@@ -7,9 +7,10 @@ interface CartDrawerProps {
     onClose: () => void;
     product: any;
     selectedSize: string;
+    selectedColor?: string;
 }
 
-export default function CartDrawer({ isOpen, onClose, product, selectedSize }: CartDrawerProps) {
+export default function CartDrawer({ isOpen, onClose, product, selectedSize, selectedColor = '' }: CartDrawerProps) {
     const { auth } = usePage().props as any;
 
     if (!isOpen) return null;
@@ -59,9 +60,14 @@ export default function CartDrawer({ isOpen, onClose, product, selectedSize }: C
                                 <h3 className="text-sm font-bold text-white mb-1 line-clamp-2 leading-tight">
                                     {product?.name}
                                 </h3>
-                                <p className="text-xs text-white/50 mb-2">
+                                <p className="text-xs text-white/50 mb-1">
                                     Talla seleccionada: <span className="font-bold text-white">{selectedSize}</span>
                                 </p>
+                                {selectedColor && (
+                                    <p className="text-xs text-white/50 mb-2">
+                                        Color seleccionado: <span className="font-bold text-white">{selectedColor}</span>
+                                    </p>
+                                )}
                             </div>
                             <p className="text-[#facc15] font-extrabold text-lg">
                                 S/ {pricePerDay.toFixed(2)} <span className="text-[10px] text-white/40 font-normal uppercase">/ día</span>
@@ -108,7 +114,7 @@ export default function CartDrawer({ isOpen, onClose, product, selectedSize }: C
                 {/* Footer Action */}
                 <div className="p-6 border-t border-[#2e2e2e] bg-[#120202]">
                     <Link 
-                        href={`/checkout/${product?.slug}?size=${selectedSize}`}
+                        href={`/checkout/${product?.slug}?size=${selectedSize}${selectedColor ? `&color=${selectedColor}` : ''}`}
                         className="w-full bg-[#e28700] hover:bg-[#f59e0b] text-black font-extrabold text-sm px-6 py-4 rounded-xl tracking-wider shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                     >
                         CONTINUAR AL CHECKOUT
