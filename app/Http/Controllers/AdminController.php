@@ -458,4 +458,46 @@ class AdminController extends Controller
 
         return redirect()->back()->with('success', 'Perfil actualizado correctamente.');
     }
+
+    public function storeAdmin(Request $request)
+    {
+        $validated = $request->validate([
+            'names' => 'required|string|max:255',
+            'lastNames' => 'required|string|max:255',
+            'dni' => 'required|string|max:20|unique:users,dni',
+            'roleDetail' => 'nullable|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email',
+            'address' => 'nullable|string|max:255',
+            'phone' => 'nullable|string|max:50',
+            'avatar' => 'nullable|image|max:2048',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $userData = [
+            'name' => $request->names,
+            'last_name' => $request->lastNames,
+            'dni' => $request->dni,
+            'position' => $request->roleDetail ?? 'Administrador',
+            'email' => $request->email,
+            'address' => $request->address,
+            'phone' => $request->phone,
+            'password' => bcrypt($request->password),
+            'role' => 'admin',
+            'status' => 'active',
+            'type' => 'personal',
+        ];
+
+        if ($request->hasFile('avatar')) {
+            $file = $request->file('avatar');
+            if ($file->isValid()) {
+                $filename = time() . '_avatar_admin_' . Str::random(5) . '.' . $file->getClientOriginalExtension();
+                $file->move(public_path('images/avatars'), $filename);
+                $userData['profile_photo_path'] = '/images/avatars/' . $filename;
+            }
+        }
+
+        User::create($userData);
+
+        return redirect()->back()->with('success', 'Administrador creado correctamente.');
+    }
 }

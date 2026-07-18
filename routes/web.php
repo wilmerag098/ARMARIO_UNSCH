@@ -45,6 +45,7 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->group(functio
         return Inertia::render('admin/Profile');
     })->name('admin.profile');
     Route::patch('/perfil', [AdminController::class, 'updateProfile'])->name('admin.profile.update');
+    Route::post('/usuarios/admin', [AdminController::class, 'storeAdmin'])->name('admin.users.store-admin');
 });
 
 require __DIR__.'/settings.php';
