@@ -13,9 +13,13 @@ class CheckoutController extends Controller
 {
     public function index(Product $product)
     {
+        if ($product->status !== 'active') {
+            abort(404);
+        }
+
         $product->load('category', 'inventories');
         
-        $accessories = Product::whereHas('category', function ($query) {
+        $accessories = Product::where('status', 'active')->whereHas('category', function ($query) {
             $query->where('slug', 'accesorios');
         })->with(['category', 'inventories' => function ($query) {
             $query->where('status', 'available');
@@ -50,7 +54,7 @@ class CheckoutController extends Controller
             'accessories.*.inventory_id' => 'required|exists:inventories,id',
         ]);
 
-        $product = Product::findOrFail($validated['product_id']);
+        $product = Product::where('status', 'active')->findOrFail($validated['product_id']);
         
         $days = \Carbon\Carbon::parse($validated['start_date'])->diffInDays(\Carbon\Carbon::parse($validated['end_date'])) + 1;
         $mainSubtotal = $product->discounted_price_per_day * $days;
@@ -89,7 +93,7 @@ class CheckoutController extends Controller
 
         if (!empty($validated['accessories'])) {
             foreach ($validated['accessories'] as $accData) {
-                $accProduct = Product::with('category')->findOrFail($accData['product_id']);
+                $accProduct = Product::where('status', 'active')->with('category')->findOrFail($accData['product_id']);
                 $accSubtotal = $accProduct->discounted_price_per_day * $days;
                 
                 if ($isPromoApplicable && $accProduct->category && $accProduct->category->slug === 'accesorios') {

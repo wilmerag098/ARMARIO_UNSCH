@@ -115,6 +115,7 @@ class AdminController extends Controller
             'colors.*' => 'nullable|string|max:50',
             'quantities' => 'required|array',
             'quantities.*' => 'required|integer|min:1',
+            'status' => 'required|string|in:active,inactive',
         ]);
 
         $imageUrls = [];
@@ -163,6 +164,7 @@ class AdminController extends Controller
             'images' => array_values($imageUrls),
             'specifications' => $specifications,
             'colors' => $request->colors ?? [],
+            'status' => $request->status,
         ]);
 
         foreach ($request->sizes as $size) {
@@ -209,6 +211,7 @@ class AdminController extends Controller
             'colors.*' => 'nullable|string|max:50',
             'quantities' => 'required|array',
             'quantities.*' => 'required|integer|min:1',
+            'status' => 'required|string|in:active,inactive',
         ]);
 
         $finalImageUrls = [null, null, null, null, null];
@@ -261,6 +264,7 @@ class AdminController extends Controller
             'image_url' => $primaryImageUrl,
             'images' => $imageUrls,
             'colors' => $request->colors ?? [],
+            'status' => $request->status,
         ]);
 
         $existingSizes = $product->inventories()->pluck('size')->toArray();
@@ -376,5 +380,82 @@ class AdminController extends Controller
     public function settings()
     {
         return Inertia::render('admin/Settings');
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $user = auth()->user();
+
+        $validated = $request->validate([
+            'names' => 'required|string|max:255',
+            'lastNames' => 'required|string|max:255',
+            'dni' => 'required|string|max:20',
+            'roleDetail' => 'nullable|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email,' . $user->id,
+            'address' => 'nullable|string|max:255',
+            'phone' => 'nullable|string|max:50',
+            'avatar' => 'nullable|image|max:2048',
+            'language' => 'required|string|in:Español,Inglés',
+            'panelTheme' => 'required|string|in:Claro,Oscuro',
+            'timezone' => 'required|string',
+            'dateFormat' => 'required|string',
+            'notifyReservations' => 'required|boolean',
+            'notifyReturns' => 'required|boolean',
+            'notifySystem' => 'required|boolean',
+        ]);
+
+        $languageMap = [
+            'Español' => 'es',
+            'Inglés' => 'en',
+        ];
+        $themeMap = [
+            'Claro' => 'light',
+            'Oscuro' => 'dark',
+        ];
+        $timezoneMap = [
+            '(GMT-05:00) Lima' => 'America/Lima',
+            '(GMT-06:00) México' => 'America/Mexico_City',
+            '(GMT+00:00) UTC' => 'UTC',
+        ];
+
+        $lang = $languageMap[$request->language] ?? 'es';
+        $theme = $themeMap[$request->panelTheme] ?? 'light';
+        $timezone = $timezoneMap[$request->timezone] ?? 'America/Lima';
+
+        $userData = [
+            'name' => $request->names,
+            'last_name' => $request->lastNames,
+            'dni' => $request->dni,
+            'position' => $request->roleDetail,
+            'email' => $request->email,
+            'address' => $request->address,
+            'phone' => $request->phone,
+            'language' => $lang,
+            'panel_theme' => $theme,
+            'timezone' => $timezone,
+            'date_format' => $request->dateFormat,
+            'notify_reservations' => $request->notifyReservations,
+            'notify_returns' => $request->notifyReturns,
+            'notify_system' => $request->notifySystem,
+        ];
+
+        if ($request->hasFile('avatar')) {
+            $file = $request->file('avatar');
+            if ($file->isValid()) {
+                $filename = time() . '_avatar_' . $user->id . '.' . $file->getClientOriginalExtension();
+                $file->move(public_path('images/avatars'), $filename);
+                
+                // Optional: Delete old avatar file if it exists
+                if ($user->profile_photo_path && file_exists(public_path($user->profile_photo_path))) {
+                    @unlink(public_path($user->profile_photo_path));
+                }
+
+                $userData['profile_photo_path'] = '/images/avatars/' . $filename;
+            }
+        }
+
+        $user->update($userData);
+
+        return redirect()->back()->with('success', 'Perfil actualizado correctamente.');
     }
 }

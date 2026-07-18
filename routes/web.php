@@ -41,6 +41,10 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->group(functio
     Route::get('/usuarios', [AdminController::class, 'users'])->name('admin.users');
     Route::get('/reportes', [AdminController::class, 'reports'])->name('admin.reports');
     Route::get('/configuracion', [AdminController::class, 'settings'])->name('admin.settings');
+    Route::get('/perfil', function () {
+        return Inertia::render('admin/Profile');
+    })->name('admin.profile');
+    Route::patch('/perfil', [AdminController::class, 'updateProfile'])->name('admin.profile.update');
 });
 
 require __DIR__.'/settings.php';

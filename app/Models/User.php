@@ -27,12 +27,22 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'email', 'password', 'university_id', 'address', 'phone', 'role', 'nombre', 'rol'])]
+#[Fillable([
+    'name', 'email', 'password', 'university_id', 'address', 'phone', 'role', 'nombre', 'rol',
+    'last_name', 'dni', 'position', 'profile_photo_path', 'language', 'panel_theme', 'timezone', 'date_format',
+    'notify_reservations', 'notify_returns', 'notify_system'
+])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+
+    protected $appends = [
+        'avatar',
+        'nombre',
+        'rol'
+    ];
 
     /**
      * Get the attributes that should be cast.
@@ -71,5 +81,10 @@ class User extends Authenticatable implements PasskeyUser
     public function reservations()
     {
         return $this->hasMany(Reservation::class);
+    }
+
+    public function getAvatarAttribute()
+    {
+        return $this->profile_photo_path ? asset($this->profile_photo_path) : null;
     }
 }

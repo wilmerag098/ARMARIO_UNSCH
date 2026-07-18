@@ -11,7 +11,7 @@ class CatalogController extends Controller
 {
     public function index(Request $request)
     {
-        $products = Product::with(['category', 'inventories'])->get();
+        $products = Product::where('status', 'active')->with(['category', 'inventories'])->get();
         $categories = Category::all();
 
         return Inertia::render('Catalogo', [

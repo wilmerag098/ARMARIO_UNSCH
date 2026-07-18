@@ -10,7 +10,7 @@ class ProductController extends Controller
 {
     public function show($slug)
     {
-        $product = Product::with(['category', 'inventories'])->where('slug', $slug)->firstOrFail();
+        $product = Product::where('status', 'active')->with(['category', 'inventories'])->where('slug', $slug)->firstOrFail();
 
         return Inertia::render('Producto', [
             'product' => $product

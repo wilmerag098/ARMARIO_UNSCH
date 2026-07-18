@@ -221,7 +221,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                             <p className="text-xs text-[#d2a9b1] truncate mt-0.5">{user?.email || 'admin@unsch.edu.pe'}</p>
                                         </div>
                                         <Link 
-                                            href="/perfil"
+                                            href="/admin/perfil"
                                             className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#d2a9b1] hover:text-[#fdeaea] hover:bg-[#290a0f]/40 transition-colors"
                                             onClick={() => setIsProfileDropdownOpen(false)}
                                         >

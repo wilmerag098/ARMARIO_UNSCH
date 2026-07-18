@@ -25,6 +25,7 @@ interface Product {
         sku: string;
         status: string;
     }[];
+    status: string;
 }
 
 interface Category {
@@ -60,6 +61,7 @@ export default function Products({ products, categories }: ProductsProps) {
         images: [null, null, null, null, null] as (File | null)[],
         existing_images: [null, null, null, null, null] as (string | null)[],
         primary_image_index: 0,
+        status: 'active',
         _method: 'POST',
     });
 
@@ -167,6 +169,7 @@ export default function Products({ products, categories }: ProductsProps) {
             images: [null, null, null, null, null],
             existing_images: existingImgs,
             primary_image_index: primaryIndex !== -1 ? primaryIndex : 0,
+            status: product.status || 'active',
             _method: 'PUT',
         });
 
@@ -252,6 +255,7 @@ export default function Products({ products, categories }: ProductsProps) {
                                         <th className="px-6 py-4 font-bold text-right">Precio/Día</th>
                                         <th className="px-6 py-4 font-bold text-right">Garantía</th>
                                         <th className="px-6 py-4 font-bold text-center">Unidades</th>
+                                        <th className="px-6 py-4 font-bold text-center">Estado</th>
                                         <th className="px-6 py-4 font-bold text-center">Acciones</th>
                                     </tr>
                                 </thead>
@@ -292,6 +296,17 @@ export default function Products({ products, categories }: ProductsProps) {
                                                 </td>
                                                 <td className="px-6 py-4 text-center font-semibold text-[#1a050a]">
                                                     {product.inventories_count ?? 0}
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    {product.status === 'active' ? (
+                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
+                                                            Activo
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-stone-100 text-stone-600 border border-stone-200">
+                                                            Inactivo
+                                                        </span>
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-4 text-center">
                                                     <div className="flex items-center justify-center gap-2">
@@ -495,6 +510,33 @@ export default function Products({ products, categories }: ProductsProps) {
                                         </div>
                                         {errors.category_id && (
                                             <span className="text-red-400 text-xs block">{errors.category_id}</span>
+                                        )}
+                                    </div>
+
+                                    {/* Estado */}
+                                    <div className="space-y-1.5">
+                                        <label htmlFor="status" className="block text-sm font-semibold text-[#ffb6c5]">
+                                            Estado *
+                                        </label>
+                                        <div className="relative">
+                                            <select 
+                                                id="status"
+                                                value={data.status}
+                                                onChange={(e) => setData('status', e.target.value)}
+                                                className="bg-[#1e0509] border border-[#571e26] rounded-xl px-4 py-3 text-white w-full focus:outline-none focus:border-[#ffb6c5] transition-all text-sm appearance-none cursor-pointer pr-10"
+                                                required
+                                            >
+                                                <option value="active" className="bg-[#1e0509] text-white">
+                                                    Activo
+                                                </option>
+                                                <option value="inactive" className="bg-[#1e0509] text-white">
+                                                    Inactivo
+                                                </option>
+                                            </select>
+                                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#ffb6c5] pointer-events-none" />
+                                        </div>
+                                        {errors.status && (
+                                            <span className="text-red-400 text-xs block">{errors.status}</span>
                                         )}
                                     </div>
 
