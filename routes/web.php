@@ -11,7 +11,7 @@ use Inertia\Inertia;
 use App\Http\Controllers\AdminController;
 
 Route::get('/', function () {
-    $products = \App\Models\Product::with('inventories')->orderBy('created_at', 'desc')->take(3)->get();
+    $products = \App\Models\Product::with('inventories')->orderBy('created_at', 'desc')->take(6)->get();
     return Inertia::render('welcome', [
         'products' => $products
     ]);
