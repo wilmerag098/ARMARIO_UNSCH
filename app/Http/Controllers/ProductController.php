@@ -12,8 +12,16 @@ class ProductController extends Controller
     {
         $product = Product::where('status', 'active')->with(['category', 'inventories'])->where('slug', $slug)->firstOrFail();
 
+        $relatedProducts = Product::where('status', 'active')
+            ->where('category_id', $product->category_id)
+            ->where('id', '!=', $product->id)
+            ->limit(4)
+            ->with(['category', 'inventories'])
+            ->get();
+
         return Inertia::render('Producto', [
-            'product' => $product
+            'product' => $product,
+            'relatedProducts' => $relatedProducts
         ]);
     }
 }

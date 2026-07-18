@@ -8,17 +8,28 @@ interface CartDrawerProps {
     product: any;
     selectedSize: string;
     selectedColor?: string;
+    rentDays?: number;
+    startDate?: string;
+    endDate?: string;
 }
 
-export default function CartDrawer({ isOpen, onClose, product, selectedSize, selectedColor = '' }: CartDrawerProps) {
+export default function CartDrawer({ 
+    isOpen, 
+    onClose, 
+    product, 
+    selectedSize, 
+    selectedColor = '',
+    rentDays = 3,
+    startDate = '',
+    endDate = ''
+}: CartDrawerProps) {
     const { auth } = usePage().props as any;
 
     if (!isOpen) return null;
 
-    // Simulate 3 days reservation for the total price placeholder
-    const days = 3; 
+    const days = rentDays; 
     const pricePerDay = parseFloat(product?.discounted_price_per_day || product?.price_per_day || '0');
-    const deposit = parseFloat(product?.security_deposit || '0');
+    const deposit = parseFloat(product?.security_deposit || '50');
     const total = (pricePerDay * days) + deposit;
 
     return (
@@ -81,17 +92,30 @@ export default function CartDrawer({ isOpen, onClose, product, selectedSize, sel
                             <Calendar className="w-3 h-3" /> Detalles de Renta
                         </h4>
                         
+                        {startDate && endDate && (
+                            <div className="flex flex-col gap-1 text-xs text-white/55 border-b border-[#333333] pb-3 mb-3">
+                                <div className="flex justify-between">
+                                    <span>Fecha de Recojo:</span>
+                                    <span className="font-semibold text-white">{startDate}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span>Fecha de Devolución:</span>
+                                    <span className="font-semibold text-white">{endDate}</span>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="space-y-3">
                             <div className="flex justify-between text-sm">
-                                <span className="text-white/60">Días de renta (Ejemplo)</span>
-                                <span className="text-white font-medium">{days} días</span>
+                                <span className="text-white/60">Días de renta</span>
+                                <span className="text-white font-medium">{days} {days === 1 ? 'día' : 'días'}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                                <span className="text-white/60">Subtotal ({days} días)</span>
+                                <span className="text-white/60">Subtotal ({days} {days === 1 ? 'día' : 'días'})</span>
                                 <span className="text-white font-medium">S/ {(pricePerDay * days).toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                                <span className="text-white/60 flex items-center gap-1">Garantía <InfoIcon /></span>
+                                <span className="text-white/60 flex items-center gap-1">Garantía Reembolsable <InfoIcon /></span>
                                 <span className="text-white font-medium">S/ {deposit.toFixed(2)}</span>
                             </div>
                         </div>
@@ -114,7 +138,7 @@ export default function CartDrawer({ isOpen, onClose, product, selectedSize, sel
                 {/* Footer Action */}
                 <div className="p-6 border-t border-[#2e2e2e] bg-[#120202]">
                     <Link 
-                        href={`/checkout/${product?.slug}?size=${selectedSize}${selectedColor ? `&color=${selectedColor}` : ''}`}
+                        href={`/checkout/${product?.slug}?size=${selectedSize}${selectedColor ? `&color=${selectedColor}` : ''}&start_date=${startDate}&end_date=${endDate}`}
                         className="w-full bg-[#e28700] hover:bg-[#f59e0b] text-black font-extrabold text-sm px-6 py-4 rounded-xl tracking-wider shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                     >
                         CONTINUAR AL CHECKOUT
