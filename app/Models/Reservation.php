@@ -12,7 +12,7 @@ class Reservation extends Model
     protected $fillable = [
         'user_id', 'order_number', 'start_date', 'end_date', 'total_amount', 'status', 
         'promotion_id', 'discount_amount', 'payment_status', 'payment_method', 
-        'guarantee_status', 'guarantee_amount'
+        'guarantee_status', 'guarantee_amount', 'payment_reference'
     ];
 
     public function user()

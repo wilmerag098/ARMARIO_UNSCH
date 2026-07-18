@@ -52,6 +52,8 @@ class CheckoutController extends Controller
             'accessories' => 'nullable|array',
             'accessories.*.product_id' => 'required|exists:products,id',
             'accessories.*.inventory_id' => 'required|exists:inventories,id',
+            'payment_method' => 'required|string|in:yape,plin',
+            'payment_reference' => 'required|string|min:8|max:20',
         ]);
 
         $product = Product::where('status', 'active')->findOrFail($validated['product_id']);
@@ -130,6 +132,8 @@ class CheckoutController extends Controller
             'total_amount' => $totalAmount,
             'discount_amount' => $discountAmount,
             'promotion_id' => $appliedPromotionId,
+            'payment_method' => $validated['payment_method'],
+            'payment_reference' => $validated['payment_reference'],
             'status' => 'pendiente'
         ]);
 
