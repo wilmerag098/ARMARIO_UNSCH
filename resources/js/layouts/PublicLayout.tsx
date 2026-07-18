@@ -28,9 +28,13 @@ interface PublicLayoutProps {
 
 export default function PublicLayout({ children, auth }: PublicLayoutProps) {
     const { url } = usePage();
+    const pageProps = usePage().props;
+    const user = auth?.user || (pageProps.auth as any)?.user;
+    const favoriteCount = user ? user.favorite_product_ids?.length || 0 : 0;
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
     const [isCategoriesDropdownOpen, setIsCategoriesDropdownOpen] = useState(false);
+    const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -90,12 +94,26 @@ export default function PublicLayout({ children, auth }: PublicLayoutProps) {
                         <div className="flex items-center gap-6 text-[#fdeaea]/90">
                             
                             {/* Favoritos */}
-                            <button className="hidden sm:flex flex-col items-center hover:text-[#dfb279] transition-colors group cursor-pointer">
+                            <Link 
+                                href={user ? "/perfil?tab=favoritos" : "/login"}
+                                className="flex flex-col items-center hover:text-[#dfb279] transition-colors group cursor-pointer relative"
+                            >
                                 <div className="relative">
-                                    <Heart className="h-5 w-5 transition-transform duration-200 group-hover:scale-110" strokeWidth={1.75} />
+                                    <Heart 
+                                        className="h-5 w-5 transition-transform duration-200 group-hover:scale-110" 
+                                        strokeWidth={1.75} 
+                                        fill={favoriteCount > 0 ? "#dfb279" : "none"} 
+                                        stroke={favoriteCount > 0 ? "#dfb279" : "currentColor"}
+                                    />
+                                    {/* Badge Favoritos */}
+                                    {favoriteCount > 0 && (
+                                        <span className="absolute -top-1.5 -right-2 h-4 w-4 bg-[#dfb279] text-[#3d0d16] rounded-full text-[9px] font-black flex items-center justify-center shadow border border-[#3d0d16] animate-in zoom-in duration-200">
+                                            {favoriteCount}
+                                        </span>
+                                    )}
                                 </div>
-                                <span className="text-[10px] font-bold text-[#dfb279]/80 group-hover:text-[#dfb279] mt-0.5 uppercase tracking-wider">Favoritos</span>
-                            </button>
+                                <span className="hidden sm:inline text-[10px] font-bold text-[#dfb279]/80 group-hover:text-[#dfb279] mt-0.5 uppercase tracking-wider">Favoritos</span>
+                            </Link>
 
                             {/* Carrito */}
                             <button className="flex flex-col items-center hover:text-[#dfb279] transition-colors group cursor-pointer relative">
@@ -184,16 +202,40 @@ export default function PublicLayout({ children, auth }: PublicLayoutProps) {
                                 )}
                             </div>
 
+                            {/* Mobile Search Icon */}
+                            <button 
+                                onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
+                                className="md:hidden hover:text-[#dfb279] transition-colors cursor-pointer mr-1"
+                                aria-label="Buscar"
+                            >
+                                <Search className="h-5 w-5" strokeWidth={2} />
+                            </button>
+
                             {/* Mobile menu toggle */}
                             <button 
                                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                                className="md:hidden hover:text-[#dfb279] transition-colors cursor-pointer"
+                                className="md:hidden hover:text-[#dfb279] transition-colors cursor-pointer ml-1"
+                                aria-label="Menú"
                             >
-                                <Menu className="h-6 w-6" />
+                                <Menu className="h-5 w-5" strokeWidth={2} />
                             </button>
                         </div>
                     </div>
                 </div>
+
+                {/* Buscador móvil expandible */}
+                {isMobileSearchOpen && (
+                    <div className="w-full bg-[#3d0d16] border-b border-[#ebd7da]/25 px-4 py-2.5 animate-in slide-in-from-top duration-200 md:hidden">
+                        <div className="relative flex items-center">
+                            <input
+                                type="text"
+                                placeholder="Buscar prendas, categorías..."
+                                className="w-full bg-white border border-[#ebd7da]/40 text-[#1a050a] text-xs rounded-xl pl-4 pr-10 py-2 focus:outline-none focus:border-[#dfb279] font-semibold"
+                            />
+                            <Search className="absolute right-3 h-4 w-4 text-[#3d0d16]" />
+                        </div>
+                    </div>
+                )}
 
                 {/* NIVEL 2: BARRA DE NAVEGACIÓN HORIZONTAL */}
                 <div className="w-full bg-[#1c050a] text-white border-b-2 border-[#dfb279] hidden md:block py-3">
@@ -243,20 +285,20 @@ export default function PublicLayout({ children, auth }: PublicLayoutProps) {
                                 Mis reservas
                             </Link>
                             <Link
-                                href="#funcionamiento"
-                                className="transition-all hover:text-[#dfb279]"
+                                href="/como-funciona"
+                                className={`transition-all hover:text-[#dfb279] ${url === '/como-funciona' ? 'text-white border-b border-[#dfb279] pb-0.5' : ''}`}
                             >
                                 Cómo funciona
                             </Link>
                             <Link
-                                href="#nosotros"
-                                className="transition-all hover:text-[#dfb279]"
+                                href="/nosotros"
+                                className={`transition-all hover:text-[#dfb279] ${url === '/nosotros' ? 'text-white border-b border-[#dfb279] pb-0.5' : ''}`}
                             >
                                 Nosotros
                             </Link>
                             <Link
-                                href="#contacto"
-                                className="transition-all hover:text-[#dfb279]"
+                                href="/contacto"
+                                className={`transition-all hover:text-[#dfb279] ${url === '/contacto' ? 'text-white border-b border-[#dfb279] pb-0.5' : ''}`}
                             >
                                 Contacto
                             </Link>
@@ -281,9 +323,9 @@ export default function PublicLayout({ children, auth }: PublicLayoutProps) {
                             <Link href="/catalogo" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-white py-1">Catálogo</Link>
                             <Link href="/perfil?tab=reservas" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-white py-1">Mis reservas</Link>
                             <Link href="/perfil" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-white py-1">Mi Cuenta</Link>
-                            <Link href="#funcionamiento" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-white py-1">Cómo funciona</Link>
-                            <Link href="#nosotros" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-white py-1">Nosotros</Link>
-                            <Link href="#contacto" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-white py-1">Contacto</Link>
+                            <Link href="/como-funciona" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-white py-1">Cómo funciona</Link>
+                            <Link href="/nosotros" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-white py-1">Nosotros</Link>
+                            <Link href="/contacto" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-white py-1">Contacto</Link>
                         </nav>
                     </div>
                 )}

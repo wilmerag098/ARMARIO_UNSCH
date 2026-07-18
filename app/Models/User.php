@@ -83,6 +83,11 @@ class User extends Authenticatable implements PasskeyUser
         return $this->hasMany(Reservation::class);
     }
 
+    public function favorites()
+    {
+        return $this->belongsToMany(Product::class, 'favoritos');
+    }
+
     public function getAvatarAttribute()
     {
         return $this->profile_photo_path ? asset($this->profile_photo_path) : null;

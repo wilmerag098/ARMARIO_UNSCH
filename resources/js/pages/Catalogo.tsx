@@ -1,20 +1,21 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, usePage, router } from '@inertiajs/react';
 import PublicLayout from '@/layouts/PublicLayout';
-import { 
-    Search, 
-    Heart, 
-    Gem, 
-    Shirt, 
-    Award, 
-    Clock, 
-    Grid, 
-    List, 
-    Calendar, 
-    MessageCircle, 
-    Star, 
+import {
+    Search,
+    Heart,
+    Gem,
+    Shirt,
+    Award,
+    Clock,
+    Grid,
+    List,
+    Calendar,
+    MessageCircle,
+    Star,
     ChevronRight,
     SlidersHorizontal,
-    CheckCircle2
+    CheckCircle2,
+    X
 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 
@@ -61,6 +62,7 @@ export default function Catalogo({ products, categories }: CatalogProps) {
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [sortBy, setSortBy] = useState<string>('popular');
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
 
     // Sync URL queries on mount (e.g. ?categoria=ternos)
     useEffect(() => {
@@ -82,10 +84,10 @@ export default function Catalogo({ products, categories }: CatalogProps) {
         return products.reduce((acc, prod, idx) => {
             const badges = ['Más alquilado', 'Nuevo', 'Popular', 'Disponible'];
             const badge = badges[idx % badges.length];
-            const badgeColor = badge === 'Más alquilado' 
-                ? 'bg-[#3d0d16] text-[#dfb279] border-[#dfb279]/30' 
+            const badgeColor = badge === 'Más alquilado'
+                ? 'bg-[#3d0d16] text-[#dfb279] border-[#dfb279]/30'
                 : (badge === 'Nuevo' ? 'bg-black text-white border-white/20' : (badge === 'Popular' ? 'bg-amber-600 text-white border-amber-700' : 'bg-emerald-600 text-white border-emerald-700'));
-            
+
             acc[prod.id] = {
                 badge,
                 badgeColor,
@@ -106,6 +108,16 @@ export default function Catalogo({ products, categories }: CatalogProps) {
         setSearchQuery('');
     };
 
+    const handleToggleFav = (productId: number) => {
+        if (!auth?.user) {
+            router.get('/login');
+            return;
+        }
+        router.post(`/favoritos/toggle/${productId}`, {}, {
+            preserveScroll: true
+        });
+    };
+
     // Filter Logic
     const filteredProducts = useMemo(() => {
         let result = [...products];
@@ -113,8 +125,8 @@ export default function Catalogo({ products, categories }: CatalogProps) {
         // Search text query
         if (searchQuery.trim() !== '') {
             const query = searchQuery.toLowerCase();
-            result = result.filter(prod => 
-                prod.name.toLowerCase().includes(query) || 
+            result = result.filter(prod =>
+                prod.name.toLowerCase().includes(query) ||
                 (prod.category?.name && prod.category.name.toLowerCase().includes(query))
             );
         }
@@ -132,7 +144,7 @@ export default function Catalogo({ products, categories }: CatalogProps) {
 
         // Size filter
         if (selectedSize !== 'all') {
-            result = result.filter(prod => 
+            result = result.filter(prod =>
                 prod.inventories?.some(inv => inv.size === selectedSize)
             );
         }
@@ -169,7 +181,7 @@ export default function Catalogo({ products, categories }: CatalogProps) {
 
             <div className="bg-[#fdfbfb] min-h-screen py-10">
                 <div className="container mx-auto max-w-screen-xl px-4 md:px-8">
-                    
+
                     {/* Header: Title and benefits */}
                     <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-10 text-left">
                         <div>
@@ -199,11 +211,10 @@ export default function Catalogo({ products, categories }: CatalogProps) {
                     <div className="flex items-center gap-3 overflow-x-auto pb-4 mb-8 text-xs font-bold uppercase tracking-wider scrollbar-none">
                         <button
                             onClick={() => setSelectedCategory('all')}
-                            className={`px-6 py-3 rounded-xl border transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
-                                selectedCategory === 'all'
+                            className={`px-6 py-3 rounded-xl border transition-all flex items-center gap-2 shrink-0 cursor-pointer ${selectedCategory === 'all'
                                     ? 'bg-[#3d0d16] text-[#dfb279] border-[#3d0d16] shadow'
                                     : 'bg-white text-[#8a3348]/75 border-[#ebd7da] hover:bg-[#fcf8f9] hover:text-[#3d0d16]'
-                            }`}
+                                }`}
                         >
                             <span>Todos</span>
                             <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md ${selectedCategory === 'all' ? 'bg-[#dfb279]/20 text-[#dfb279]' : 'bg-[#ebd7da]/40 text-[#8a3348]/70'}`}>{totalItems}</span>
@@ -212,11 +223,10 @@ export default function Catalogo({ products, categories }: CatalogProps) {
                             <button
                                 key={cat.id}
                                 onClick={() => setSelectedCategory(String(cat.id))}
-                                className={`px-6 py-3 rounded-xl border transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
-                                    selectedCategory === String(cat.id)
+                                className={`px-6 py-3 rounded-xl border transition-all flex items-center gap-2 shrink-0 cursor-pointer ${selectedCategory === String(cat.id)
                                         ? 'bg-[#3d0d16] text-[#dfb279] border-[#3d0d16] shadow'
                                         : 'bg-white text-[#8a3348]/75 border-[#ebd7da] hover:bg-[#fcf8f9] hover:text-[#3d0d16]'
-                                }`}
+                                    }`}
                             >
                                 <span>{cat.name}</span>
                                 <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md ${selectedCategory === String(cat.id) ? 'bg-[#dfb279]/20 text-[#dfb279]' : 'bg-[#ebd7da]/40 text-[#8a3348]/70'}`}>{cat.products_count}</span>
@@ -225,9 +235,9 @@ export default function Catalogo({ products, categories }: CatalogProps) {
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                        
+
                         {/* SIDEBAR DE FILTROS (Izquierda) */}
-                        <div className="lg:col-span-3 bg-white border border-[#ebd7da] rounded-[2rem] p-6 shadow-sm space-y-6 text-left">
+                        <div className="hidden lg:block lg:col-span-3 bg-white border border-[#ebd7da] rounded-[2rem] p-6 shadow-sm space-y-6 text-left">
                             <div className="flex justify-between items-center border-b border-[#ebd7da] pb-3">
                                 <h3 className="font-extrabold text-sm uppercase tracking-wider text-[#1a050a] flex items-center gap-2">
                                     <SlidersHorizontal size={14} className="text-[#94344c]" />
@@ -276,7 +286,7 @@ export default function Catalogo({ products, categories }: CatalogProps) {
                             <div className="space-y-3">
                                 <span className="text-[10px] font-bold uppercase tracking-wider text-[#8a3348]/60 block">Rango de precio</span>
                                 <div className="space-y-2">
-                                    <input 
+                                    <input
                                         type="range"
                                         min="30"
                                         max="200"
@@ -297,15 +307,14 @@ export default function Catalogo({ products, categories }: CatalogProps) {
                             <div className="space-y-3">
                                 <span className="text-[10px] font-bold uppercase tracking-wider text-[#8a3348]/60 block">Talla</span>
                                 <div className="grid grid-cols-5 gap-1.5">
-                                    {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map((size) => (
+                                    {['XS', 'S', 'M', 'L', 'XL'].map((size) => (
                                         <button
                                             key={size}
                                             onClick={() => setSelectedSize(selectedSize === size ? 'all' : size)}
-                                            className={`py-2 rounded-lg border text-[10px] font-bold transition-all text-center shrink-0 cursor-pointer ${
-                                                selectedSize === size
+                                            className={`py-2 rounded-lg border text-[10px] font-bold transition-all text-center shrink-0 cursor-pointer ${selectedSize === size
                                                     ? 'border-[#94344c] text-[#94344c] bg-[#94344c]/10'
                                                     : 'border-[#ebd7da] text-[#8a3348]/70 hover:border-[#94344c]/45'
-                                            }`}
+                                                }`}
                                         >
                                             {size}
                                         </button>
@@ -330,9 +339,8 @@ export default function Catalogo({ products, categories }: CatalogProps) {
                                         <button
                                             key={color.name}
                                             onClick={() => setSelectedColor(selectedColor === color.name ? 'all' : color.name)}
-                                            className={`h-6.5 w-6.5 rounded-full border-2 ${color.class} ${
-                                                selectedColor === color.name ? 'ring-2 ring-offset-2 ring-[#94344c]' : ''
-                                            } cursor-pointer transition-all`}
+                                            className={`h-6.5 w-6.5 rounded-full border-2 ${color.class} ${selectedColor === color.name ? 'ring-2 ring-offset-2 ring-[#94344c]' : ''
+                                                } cursor-pointer transition-all`}
                                             aria-label={`Color ${color.name}`}
                                         />
                                     ))}
@@ -391,42 +399,51 @@ export default function Catalogo({ products, categories }: CatalogProps) {
 
                         {/* PANEL PRINCIPAL (Derecha) */}
                         <div className="lg:col-span-9 space-y-6 text-left">
-                            
+
                             {/* Barra de Ordenamiento y Cambio de Vista */}
-                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white border border-[#ebd7da] px-6 py-3.5 rounded-3xl shadow-sm">
-                                <div className="text-xs text-[#8a3348]/70 font-semibold uppercase tracking-wider">
-                                    Ordenar por: 
-                                    <select
-                                        value={sortBy}
-                                        onChange={e => setSortBy(e.target.value)}
-                                        className="ml-2 bg-transparent border-0 text-[#1a050a] font-extrabold focus:outline-none focus:ring-0 cursor-pointer pr-5"
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white border border-[#ebd7da] px-6 py-3.5 rounded-3xl shadow-sm w-full">
+                                <div className="flex items-center gap-4 w-full sm:w-auto">
+                                    {/* Botón de Filtros para Móviles */}
+                                    <button
+                                        onClick={() => setIsMobileFiltersOpen(true)}
+                                        className="lg:hidden flex items-center gap-2 bg-[#fcf8f9] border border-[#ebd7da] px-4 py-2 rounded-xl text-xs font-bold text-[#3d0d16] hover:bg-[#ebd7da]/20 transition-all cursor-pointer shrink-0"
                                     >
-                                        <option value="popular">Más populares</option>
-                                        <option value="price_asc">Precio: menor a mayor</option>
-                                        <option value="price_desc">Precio: mayor a menor</option>
-                                    </select>
+                                        <SlidersHorizontal size={13} />
+                                        Filtros
+                                    </button>
+
+                                    <div className="text-xs text-[#8a3348]/70 font-semibold uppercase tracking-wider">
+                                        Ordenar por:
+                                        <select
+                                            value={sortBy}
+                                            onChange={e => setSortBy(e.target.value)}
+                                            className="ml-2 bg-transparent border-0 text-[#1a050a] font-extrabold focus:outline-none focus:ring-0 cursor-pointer pr-5"
+                                        >
+                                            <option value="popular">Más populares</option>
+                                            <option value="price_asc">Precio: menor a mayor</option>
+                                            <option value="price_desc">Precio: mayor a menor</option>
+                                        </select>
+                                    </div>
                                 </div>
 
                                 {/* Grid / List mode toggle */}
                                 <div className="flex items-center gap-2 ml-auto shrink-0">
                                     <button
                                         onClick={() => setViewMode('grid')}
-                                        className={`p-2 rounded-lg border transition-all cursor-pointer ${
-                                            viewMode === 'grid'
+                                        className={`p-2 rounded-lg border transition-all cursor-pointer ${viewMode === 'grid'
                                                 ? 'bg-[#3d0d16] text-[#dfb279] border-[#3d0d16]'
                                                 : 'bg-white border-[#ebd7da] text-[#8a3348]/70'
-                                        }`}
+                                            }`}
                                         aria-label="Vista cuadrícula"
                                     >
                                         <Grid size={15} />
                                     </button>
                                     <button
                                         onClick={() => setViewMode('list')}
-                                        className={`p-2 rounded-lg border transition-all cursor-pointer ${
-                                            viewMode === 'list'
+                                        className={`p-2 rounded-lg border transition-all cursor-pointer ${viewMode === 'list'
                                                 ? 'bg-[#3d0d16] text-[#dfb279] border-[#3d0d16]'
                                                 : 'bg-white border-[#ebd7da] text-[#8a3348]/70'
-                                        }`}
+                                            }`}
                                         aria-label="Vista lista"
                                     >
                                         <List size={15} />
@@ -439,15 +456,15 @@ export default function Catalogo({ products, categories }: CatalogProps) {
                                 {filteredProducts.length > 0 ? (
                                     filteredProducts.map((prod) => {
                                         const mock = productMocks[prod.id];
-                                        
+
                                         // Obtener las tallas únicas disponibles del inventario real
-                                        const sizes = prod.inventories 
-                                            ? Array.from(new Set(prod.inventories.map(inv => inv.size))).join(', ') 
+                                        const sizes = prod.inventories
+                                            ? Array.from(new Set(prod.inventories.map(inv => inv.size))).join(', ')
                                             : 'S, M, L';
 
                                         const price = parseFloat(String(prod.price_per_day)).toFixed(2);
-                                        const finalPrice = prod.discount_percent > 0 
-                                            ? parseFloat(String(prod.discounted_price_per_day)).toFixed(2) 
+                                        const finalPrice = prod.discount_percent > 0
+                                            ? parseFloat(String(prod.discounted_price_per_day)).toFixed(2)
                                             : price;
 
                                         return (
@@ -462,8 +479,15 @@ export default function Catalogo({ products, categories }: CatalogProps) {
                                                         {mock?.badge}
                                                     </div>
                                                     {/* Favoritos botón */}
-                                                    <button className="absolute top-3 right-3 z-10 h-7 w-7 rounded-full bg-white/95 text-[#94344c] hover:bg-white border border-[#ebd7da]/40 flex items-center justify-center shadow transition-all duration-200">
-                                                        <Heart size={13} />
+                                                    <button 
+                                                        onClick={() => handleToggleFav(prod.id)}
+                                                        className={`absolute top-3 right-3 z-10 h-7 w-7 rounded-full flex items-center justify-center shadow transition-all duration-200 border cursor-pointer ${
+                                                            auth?.user && (auth.user as any).favorite_product_ids?.includes(prod.id)
+                                                                ? 'bg-[#94344c] text-white border-[#94344c]' 
+                                                                : 'bg-white/95 text-[#94344c] hover:bg-white border-[#ebd7da]/40'
+                                                        }`}
+                                                    >
+                                                        <Heart size={13} fill={auth?.user && (auth.user as any).favorite_product_ids?.includes(prod.id) ? "currentColor" : "none"} />
                                                     </button>
                                                     <img
                                                         src={prod.image_url || 'https://images.unsplash.com/photo-1593030761757-71fae45fa0e7?q=80&w=800&auto=format&fit=crop'}
@@ -566,7 +590,7 @@ export default function Catalogo({ products, categories }: CatalogProps) {
             {/* BOTONES FLOTANTES DE CONTACTO Y CALENDARIO */}
             <div className="fixed bottom-6 right-6 z-40 flex flex-col gap-3 items-end">
                 {/* Calendario Flotante */}
-                <button 
+                <button
                     className="h-12 w-12 rounded-full bg-[#1c050a] border border-[#dfb279]/35 text-[#dfb279] hover:bg-[#3d0d16] hover:text-white flex items-center justify-center shadow-2xl transition-all hover:scale-105 active:scale-95 cursor-pointer"
                     aria-label="Abrir calendario"
                 >
@@ -574,9 +598,9 @@ export default function Catalogo({ products, categories }: CatalogProps) {
                 </button>
 
                 {/* WhatsApp Chat Flotante */}
-                <a 
-                    href="https://wa.me/51999888777" 
-                    target="_blank" 
+                <a
+                    href="https://wa.me/51999888777"
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="h-12 bg-white border border-[#ebd7da] text-[#3d0d16] hover:bg-[#fcf8f9] rounded-full px-5 py-3.5 flex items-center gap-2 shadow-2xl transition-all hover:scale-103 active:scale-97 cursor-pointer group"
                 >
@@ -584,6 +608,185 @@ export default function Catalogo({ products, categories }: CatalogProps) {
                     <span className="text-[10px] font-black uppercase tracking-wider text-[#3d0d16]/85 group-hover:text-[#3d0d16]">¿Necesitas ayuda?</span>
                 </a>
             </div>
+
+            {/* Drawer de Filtros Móvil */}
+            {isMobileFiltersOpen && (
+                <div className="fixed inset-0 z-50 flex justify-end md:hidden">
+                    {/* Backdrop */}
+                    <div 
+                        className="fixed inset-0 bg-black/60 backdrop-blur-xs" 
+                        onClick={() => setIsMobileFiltersOpen(false)}
+                    />
+                    
+                    {/* Panel deslizable */}
+                    <div className="relative w-80 max-w-xs bg-white h-full shadow-2xl p-6 overflow-y-auto z-50 flex flex-col justify-between text-left animate-in slide-in-from-right duration-300">
+                        <div>
+                            {/* Header */}
+                            <div className="flex justify-between items-center border-b border-[#ebd7da] pb-4 mb-6">
+                                <h3 className="font-extrabold text-sm uppercase tracking-wider text-[#1a050a] flex items-center gap-2">
+                                    <SlidersHorizontal size={14} className="text-[#94344c]" />
+                                    Filtros
+                                </h3>
+                                <button 
+                                    onClick={() => setIsMobileFiltersOpen(false)}
+                                    className="text-[#3d0d16] hover:text-[#94344c] p-1 rounded-lg transition-colors cursor-pointer"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+
+                            {/* Filtros */}
+                            <div className="space-y-6">
+                                {/* Categorías */}
+                                <div className="space-y-3">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#8a3348]/60 block">Categoría</span>
+                                    <div className="space-y-2">
+                                        <label className="flex items-center gap-2.5 text-xs text-[#1a050a] font-medium cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedCategory === 'all'}
+                                                onChange={() => setSelectedCategory('all')}
+                                                className="h-4 w-4 rounded border-[#ebd7da] text-[#94344c] focus:ring-0 focus:ring-offset-0 bg-[#fcf8f9]"
+                                            />
+                                            <span className="flex-grow">Todos</span>
+                                            <span className="text-[10px] text-[#8a3348]/50 font-bold">{totalItems}</span>
+                                        </label>
+                                        {categories.map((cat) => (
+                                            <label key={cat.id} className="flex items-center gap-2.5 text-xs text-[#1a050a] font-medium cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedCategory === String(cat.id)}
+                                                    onChange={() => setSelectedCategory(String(cat.id))}
+                                                    className="h-4 w-4 rounded border-[#ebd7da] text-[#94344c] focus:ring-0 focus:ring-offset-0 bg-[#fcf8f9]"
+                                                />
+                                                <span className="flex-grow">{cat.name}</span>
+                                                <span className="text-[10px] text-[#8a3348]/50 font-bold">{cat.products_count}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <hr className="border-[#ebd7da]/70" />
+
+                                {/* Precios */}
+                                <div className="space-y-3">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#8a3348]/60 block">Rango de precio</span>
+                                    <div className="space-y-2">
+                                        <input 
+                                            type="range"
+                                            min="30"
+                                            max="200"
+                                            value={priceMax}
+                                            onChange={e => setPriceMax(Number(e.target.value))}
+                                            className="w-full accent-[#94344c] cursor-pointer"
+                                        />
+                                        <div className="flex justify-between text-[11px] text-[#8a3348] font-bold">
+                                            <span>S/ 30</span>
+                                            <span>S/ {priceMax}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <hr className="border-[#ebd7da]/70" />
+
+                                {/* Tallas */}
+                                <div className="space-y-3">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#8a3348]/60 block">Talla</span>
+                                    <div className="grid grid-cols-5 gap-1.5">
+                                        {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map((size) => (
+                                            <button
+                                                key={size}
+                                                onClick={() => setSelectedSize(selectedSize === size ? 'all' : size)}
+                                                className={`py-2 rounded-lg border text-[10px] font-bold transition-all text-center cursor-pointer ${
+                                                    selectedSize === size
+                                                        ? 'border-[#94344c] text-[#94344c] bg-[#94344c]/10'
+                                                        : 'border-[#ebd7da] text-[#8a3348]/70 hover:border-[#94344c]/45'
+                                                }`}
+                                            >
+                                                {size}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <hr className="border-[#ebd7da]/70" />
+
+                                {/* Colores */}
+                                <div className="space-y-3">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#8a3348]/60 block">Color</span>
+                                    <div className="flex flex-wrap gap-2.5">
+                                        {[
+                                            { name: 'negro', class: 'bg-black border-black' },
+                                            { name: 'azul', class: 'bg-blue-900 border-blue-900' },
+                                            { name: 'gris', class: 'bg-gray-500 border-gray-500' },
+                                            { name: 'crema', class: 'bg-[#ebd5b3] border-[#ebd5b3]' },
+                                            { name: 'vino', class: 'bg-[#571e26] border-[#571e26]' },
+                                            { name: 'verde', class: 'bg-emerald-800 border-emerald-800' }
+                                        ].map((color) => (
+                                            <button
+                                                key={color.name}
+                                                onClick={() => setSelectedColor(selectedColor === color.name ? 'all' : color.name)}
+                                                className={`h-6.5 w-6.5 rounded-full border-2 ${color.class} ${
+                                                    selectedColor === color.name ? 'ring-2 ring-offset-2 ring-[#94344c]' : ''
+                                                } cursor-pointer transition-all`}
+                                                aria-label={`Color ${color.name}`}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <hr className="border-[#ebd7da]/70" />
+
+                                {/* Disponibilidad */}
+                                <div className="space-y-3">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#8a3348]/60 block">Disponibilidad</span>
+                                    <div className="space-y-2 text-xs font-medium text-[#1a050a]">
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                name="availability_mobile"
+                                                checked={selectedAvailability === 'all'}
+                                                onChange={() => setSelectedAvailability('all')}
+                                                className="h-4 w-4 text-[#94344c] focus:ring-0 bg-[#fcf8f9] border-[#ebd7da]"
+                                            />
+                                            <span>Todos</span>
+                                        </label>
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                name="availability_mobile"
+                                                checked={selectedAvailability === 'available'}
+                                                onChange={() => setSelectedAvailability('available')}
+                                                className="h-4 w-4 text-[#94344c] focus:ring-0 bg-[#fcf8f9] border-[#ebd7da]"
+                                            />
+                                            <span>Disponible</span>
+                                        </label>
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                name="availability_mobile"
+                                                checked={selectedAvailability === 'rented'}
+                                                onChange={() => setSelectedAvailability('rented')}
+                                                className="h-4 w-4 text-[#94344c] focus:ring-0 bg-[#fcf8f9] border-[#ebd7da]"
+                                            />
+                                            <span>No disponible</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="pt-6 border-t border-[#ebd7da] mt-6">
+                            <button
+                                onClick={() => setIsMobileFiltersOpen(false)}
+                                className="w-full py-2.5 bg-[#3d0d16] hover:bg-[#571e26] text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md shadow-[#3d0d16]/10 text-center cursor-pointer"
+                            >
+                                Aplicar filtros
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </PublicLayout>
     );
 }

@@ -20,9 +20,28 @@ import {
     ChevronDown
 } from 'lucide-react';
 
+interface ProfileForm {
+    names: string;
+    lastNames: string;
+    dni: string;
+    roleDetail: string;
+    email: string;
+    address: string;
+    phone: string;
+    avatar: File | null;
+    language: string;
+    panelTheme: string;
+    timezone: string;
+    dateFormat: string;
+    notifyReservations: boolean;
+    notifyReturns: boolean;
+    notifySystem: boolean;
+    _method: string;
+}
+
 export default function Profile() {
     const { auth } = usePage().props;
-    const user = auth?.user;
+    const user = auth?.user as any;
 
     const [activeTab, setActiveTab] = useState<'personal' | 'preferencias' | 'notificaciones'>('personal');
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -30,7 +49,7 @@ export default function Profile() {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Inertia form handler for main profile updates
-    const { data, setData, post, processing, errors, reset } = useForm({
+    const { data, setData, post, processing, errors, reset } = useForm<ProfileForm>({
         names: user?.name || '',
         lastNames: user?.last_name || '',
         dni: user?.dni || '',

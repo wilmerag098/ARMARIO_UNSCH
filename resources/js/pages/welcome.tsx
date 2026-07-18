@@ -1,4 +1,4 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, usePage, router } from '@inertiajs/react';
 import { 
     GraduationCap, 
     Calendar,
@@ -41,6 +41,16 @@ interface WelcomeProps {
 
 export default function Welcome({ products }: WelcomeProps) {
     const { auth } = usePage().props;
+
+    const handleToggleFav = (productId: number) => {
+        if (!auth?.user) {
+            router.get('/login');
+            return;
+        }
+        router.post(`/favoritos/toggle/${productId}`, {}, {
+            preserveScroll: true
+        });
+    };
 
     // Categorías con íconos específicos
     const categories = [
@@ -289,8 +299,15 @@ export default function Welcome({ products }: WelcomeProps) {
                                             {mock.badge}
                                         </div>
                                         {/* Favoritos botón */}
-                                        <button className="absolute top-3.5 right-3.5 z-10 h-8 w-8 rounded-full bg-white/90 text-[#94344c] hover:bg-white border border-[#ebd7da]/40 flex items-center justify-center shadow transition-all duration-200">
-                                            <Heart className="h-4 w-4" />
+                                        <button 
+                                            onClick={() => handleToggleFav(prod.id)}
+                                            className={`absolute top-3.5 right-3.5 z-10 h-8 w-8 rounded-full flex items-center justify-center shadow transition-all duration-200 border cursor-pointer ${
+                                                auth?.user && (auth.user as any).favorite_product_ids?.includes(prod.id)
+                                                    ? 'bg-[#94344c] text-white border-[#94344c]' 
+                                                    : 'bg-white/90 text-[#94344c] hover:bg-white border-[#ebd7da]/40'
+                                            }`}
+                                        >
+                                            <Heart className="h-4 w-4" fill={auth?.user && (auth.user as any).favorite_product_ids?.includes(prod.id) ? "currentColor" : "none"} />
                                         </button>
                                         <img 
                                             src={prod.image_url || 'https://images.unsplash.com/photo-1593030761757-71fae45fa0e7?q=80&w=800&auto=format&fit=crop'} 

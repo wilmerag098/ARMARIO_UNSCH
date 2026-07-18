@@ -17,6 +17,19 @@ Route::get('/', function () {
     ]);
 })->name('home');
 Route::get('/catalogo', [CatalogController::class, 'index'])->name('catalogo');
+
+Route::get('/como-funciona', function () {
+    return Inertia::render('ComoFunciona');
+})->name('como-funciona');
+
+Route::get('/nosotros', function () {
+    return Inertia::render('Nosotros');
+})->name('nosotros');
+
+Route::get('/contacto', function () {
+    return Inertia::render('Contacto');
+})->name('contacto');
+
 Route::get('/producto/{slug}', [ProductController::class, 'show'])->name('producto');
 Route::post('/checkout/register', [CheckoutController::class, 'fastRegister'])->name('checkout.register');
 Route::get('/checkout/{product:slug}', [CheckoutController::class, 'index'])->name('checkout');
@@ -25,8 +38,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
     
     Route::get('/perfil', [UserDashboardController::class, 'profile'])->name('perfil');
+    Route::patch('/perfil/actualizar', [UserDashboardController::class, 'updateProfile'])->name('perfil.update');
+    Route::patch('/reservas/{reservation}/cancelar', [UserDashboardController::class, 'cancelReservation'])->name('reservas.cancel');
+    Route::post('/favoritos/toggle/{product}', [UserDashboardController::class, 'toggleFavorite'])->name('favoritos.toggle');
     
-    Route::inertia('dashboard', 'dashboard')->name('dashboard');
+    Route::get('/dashboard', function () {
+        if (auth()->user()->rol === 'admin') {
+            return redirect()->route('admin.dashboard');
+        }
+        return redirect()->route('perfil');
+    })->name('dashboard');
 });
 
 Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->group(function () {
