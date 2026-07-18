@@ -1,36 +1,38 @@
 import React from 'react';
-import { X, ShoppingBag, Calendar, CheckCircle2, AlertTriangle, ArrowRight } from 'lucide-react';
+import { X, ShoppingBag, Calendar, CheckCircle2, AlertTriangle, ArrowRight, Plus, Trash2 } from 'lucide-react';
 import { Link, usePage } from '@inertiajs/react';
 
 interface CartDrawerProps {
     isOpen: boolean;
     onClose: () => void;
-    product: any;
-    selectedSize: string;
-    selectedColor?: string;
-    rentDays?: number;
-    startDate?: string;
-    endDate?: string;
+    cartItems: any[];
+    onRemoveItem: (id: string) => void;
 }
 
 export default function CartDrawer({ 
     isOpen, 
     onClose, 
-    product, 
-    selectedSize, 
-    selectedColor = '',
-    rentDays = 3,
-    startDate = '',
-    endDate = ''
+    cartItems = [], 
+    onRemoveItem
 }: CartDrawerProps) {
     const { auth } = usePage().props as any;
 
     if (!isOpen) return null;
 
-    const days = rentDays; 
-    const pricePerDay = parseFloat(product?.discounted_price_per_day || product?.price_per_day || '0');
-    const deposit = parseFloat(product?.security_deposit || '50');
-    const total = (pricePerDay * days) + deposit;
+    const hasItems = cartItems && cartItems.length > 0;
+    
+    // Subtotal and deposits sum
+    let totalSubtotal = 0;
+    let totalDeposit = 0;
+    if (hasItems) {
+        cartItems.forEach((item: any) => {
+            const price = parseFloat(item.product?.discounted_price_per_day || item.product?.price_per_day || '0');
+            const dep = parseFloat(item.product?.security_deposit || '50');
+            totalSubtotal += price * (item.rentDays || 3);
+            totalDeposit += dep;
+        });
+    }
+    const grandTotal = totalSubtotal + totalDeposit;
 
     return (
         <div className="fixed inset-0 z-50 flex justify-end">
@@ -58,100 +60,138 @@ export default function CartDrawer({
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto p-6 scrollbar-none">
-                    {/* Item */}
-                    <div className="flex gap-4 p-4 bg-[#1a1a1a] rounded-2xl border border-[#333333] mb-6">
-                        <img 
-                            src={product?.image_url} 
-                            alt={product?.name} 
-                            className="w-20 h-28 object-cover rounded-xl border border-[#333333]"
-                        />
-                        <div className="flex-1 flex flex-col justify-between">
-                            <div>
-                                <h3 className="text-sm font-bold text-white mb-1 line-clamp-2 leading-tight">
-                                    {product?.name}
-                                </h3>
-                                <p className="text-xs text-white/50 mb-1">
-                                    Talla seleccionada: <span className="font-bold text-white">{selectedSize}</span>
-                                </p>
-                                {selectedColor && (
-                                    <p className="text-xs text-white/50 mb-2">
-                                        Color seleccionado: <span className="font-bold text-white">{selectedColor}</span>
-                                    </p>
-                                )}
+                <div className="flex-1 overflow-y-auto p-6 scrollbar-none flex flex-col justify-start">
+                    {!hasItems ? (
+                        <div className="text-center py-20 flex flex-col items-center justify-center my-auto">
+                            <div className="w-16 h-16 rounded-full bg-[#3a0d16]/30 flex items-center justify-center mb-4 text-[#ffb6c5]">
+                                <ShoppingBag className="w-8 h-8" />
                             </div>
-                            <p className="text-[#facc15] font-extrabold text-lg">
-                                S/ {pricePerDay.toFixed(2)} <span className="text-[10px] text-white/40 font-normal uppercase">/ día</span>
+                            <h3 className="text-lg font-bold text-white mb-2">Tu bolsa está vacía</h3>
+                            <p className="text-xs text-white/50 max-w-[260px] leading-relaxed mb-6">
+                                Explora nuestra colección de alta costura para encontrar el atuendo perfecto para tu evento.
                             </p>
+                            <Link
+                                href="/catalogo"
+                                onClick={onClose}
+                                className="px-6 py-3 bg-[#e28700] hover:bg-[#f59e0b] text-black font-extrabold text-xs rounded-xl tracking-wider uppercase transition-all shadow-md animate-pulse"
+                            >
+                                Ver Catálogo
+                            </Link>
                         </div>
-                    </div>
+                    ) : (
+                        <>
+                            {/* Items List */}
+                            <div className="space-y-4 mb-6">
+                                {cartItems.map((item: any) => {
+                                    const pricePerDay = parseFloat(item.product?.discounted_price_per_day || item.product?.price_per_day || '0');
+                                    const itemSubtotal = pricePerDay * (item.rentDays || 3);
+                                    const itemDeposit = parseFloat(item.product?.security_deposit || '50');
+                                    const itemTotal = itemSubtotal + itemDeposit;
 
-                    {/* Booking Details placeholder */}
-                    <div className="bg-[#222222] rounded-2xl p-5 mb-6 border border-[#333333]">
-                        <h4 className="text-[11px] font-extrabold text-white/50 uppercase tracking-widest mb-4 flex items-center gap-2">
-                            <Calendar className="w-3 h-3" /> Detalles de Renta
-                        </h4>
-                        
-                        {startDate && endDate && (
-                            <div className="flex flex-col gap-1 text-xs text-white/55 border-b border-[#333333] pb-3 mb-3">
-                                <div className="flex justify-between">
-                                    <span>Fecha de Recojo:</span>
-                                    <span className="font-semibold text-white">{startDate}</span>
+                                    return (
+                                        <div key={item.id} className="flex gap-4 p-4 bg-[#1a1a1a] rounded-2xl border border-[#333333] relative group">
+                                            <img 
+                                                src={item.product?.image_url} 
+                                                alt={item.product?.name} 
+                                                className="w-16 h-24 object-cover rounded-xl border border-[#333333] shrink-0"
+                                            />
+                                            <div className="flex-1 flex flex-col justify-between pr-6">
+                                                <div>
+                                                    <h3 className="text-xs font-bold text-white mb-1 line-clamp-2 leading-tight">
+                                                        {item.product?.name}
+                                                    </h3>
+                                                    <p className="text-[10px] text-white/50 mb-0.5">
+                                                        Talla: <span className="font-bold text-white">{item.selectedSize}</span>
+                                                        {item.selectedColor && <> | Color: <span className="font-bold text-white capitalize">{item.selectedColor}</span></>}
+                                                    </p>
+                                                    <p className="text-[10px] text-white/40">
+                                                        Renta: <span className="font-medium text-white/70">{item.startDate} al {item.endDate}</span> ({item.rentDays} {item.rentDays === 1 ? 'día' : 'días'})
+                                                    </p>
+                                                </div>
+                                                <div className="flex justify-between items-center mt-2 pt-2 border-t border-white/5">
+                                                    <span className="text-[#facc15] font-bold text-xs">
+                                                        S/ {pricePerDay.toFixed(2)} <span className="text-[9px] text-white/40 font-normal">/ día</span>
+                                                    </span>
+                                                    <span className="text-[10px] text-white/60 font-semibold">
+                                                        Total: S/ {itemTotal.toFixed(2)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => onRemoveItem(item.id)}
+                                                className="absolute top-3 right-3 text-white/40 hover:text-red-400 p-1 rounded-full hover:bg-white/5 transition-all"
+                                                title="Quitar prenda"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Añadir Prenda */}
+                            <Link
+                                href="/catalogo"
+                                onClick={onClose}
+                                className="flex items-center justify-center gap-2 p-4 mb-6 rounded-2xl border border-dashed border-[#ffb6c5]/20 bg-[#ffb6c5]/5 hover:bg-[#ffb6c5]/10 hover:border-[#ffb6c5]/40 text-[#ffb6c5] transition-all group text-sm font-bold"
+                            >
+                                <Plus className="w-4 h-4 transition-transform group-hover:scale-110" />
+                                <span>Añadir otra prenda</span>
+                            </Link>
+
+                            {/* Booking Details placeholder */}
+                            <div className="bg-[#222222] rounded-2xl p-5 mb-6 border border-[#333333]">
+                                <h4 className="text-[11px] font-extrabold text-white/50 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                    <Calendar className="w-3 h-3" /> Resumen de Renta
+                                </h4>
+
+                                <div className="space-y-3">
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-white/60">Total Costo Alquiler</span>
+                                        <span className="text-white font-medium">S/ {totalSubtotal.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-white/60 flex items-center gap-1">Total Garantías Reembolsables <InfoIcon /></span>
+                                        <span className="text-white font-medium">S/ {totalDeposit.toFixed(2)}</span>
+                                    </div>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span>Fecha de Devolución:</span>
-                                    <span className="font-semibold text-white">{endDate}</span>
+                                
+                                <div className="border-t border-[#333333] mt-4 pt-4 flex justify-between items-end">
+                                    <span className="text-xs text-white/50 uppercase font-bold tracking-wider">Total Estimado</span>
+                                    <span className="text-2xl text-[#facc15] font-extrabold">S/ {grandTotal.toFixed(2)}</span>
                                 </div>
                             </div>
-                        )}
 
-                        <div className="space-y-3">
-                            <div className="flex justify-between text-sm">
-                                <span className="text-white/60">Días de renta</span>
-                                <span className="text-white font-medium">{days} {days === 1 ? 'día' : 'días'}</span>
+                            {/* Alert */}
+                            <div className="flex items-start gap-3 bg-[#ffb6c5]/10 border border-[#ffb6c5]/20 p-4 rounded-xl">
+                                <AlertTriangle className="w-5 h-5 text-[#ffb6c5] shrink-0 mt-0.5" />
+                                <p className="text-xs text-[#ffb6c5] leading-relaxed">
+                                    Las fechas exactas de recojo y devolución se confirmarán en el siguiente paso de pago.
+                                </p>
                             </div>
-                            <div className="flex justify-between text-sm">
-                                <span className="text-white/60">Subtotal ({days} {days === 1 ? 'día' : 'días'})</span>
-                                <span className="text-white font-medium">S/ {(pricePerDay * days).toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                                <span className="text-white/60 flex items-center gap-1">Garantía Reembolsable <InfoIcon /></span>
-                                <span className="text-white font-medium">S/ {deposit.toFixed(2)}</span>
-                            </div>
-                        </div>
-                        
-                        <div className="border-t border-[#333333] mt-4 pt-4 flex justify-between items-end">
-                            <span className="text-xs text-white/50 uppercase font-bold tracking-wider">Total Estimado</span>
-                            <span className="text-2xl text-[#facc15] font-extrabold">S/ {total.toFixed(2)}</span>
-                        </div>
-                    </div>
-
-                    {/* Alert */}
-                    <div className="flex items-start gap-3 bg-[#ffb6c5]/10 border border-[#ffb6c5]/20 p-4 rounded-xl">
-                        <AlertTriangle className="w-5 h-5 text-[#ffb6c5] shrink-0 mt-0.5" />
-                        <p className="text-xs text-[#ffb6c5] leading-relaxed">
-                            Las fechas exactas de recojo y devolución se confirmarán en el siguiente paso de pago.
-                        </p>
-                    </div>
+                        </>
+                    )}
                 </div>
 
                 {/* Footer Action */}
-                <div className="p-6 border-t border-[#2e2e2e] bg-[#120202]">
-                    <Link 
-                        href={`/checkout/${product?.slug}?size=${selectedSize}${selectedColor ? `&color=${selectedColor}` : ''}&start_date=${startDate}&end_date=${endDate}`}
-                        className="w-full bg-[#e28700] hover:bg-[#f59e0b] text-black font-extrabold text-sm px-6 py-4 rounded-xl tracking-wider shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-                    >
-                        CONTINUAR AL CHECKOUT
-                        <ArrowRight className="w-4 h-4" />
-                    </Link>
+                {hasItems && (
+                    <div className="p-6 border-t border-[#2e2e2e] bg-[#120202]">
+                        <Link 
+                            href={`/checkout/${cartItems[0].product?.slug}?size=${cartItems[0].selectedSize}${cartItems[0].selectedColor ? `&color=${cartItems[0].selectedColor}` : ''}&start_date=${cartItems[0].startDate}&end_date=${cartItems[0].endDate}`}
+                            className="w-full bg-[#e28700] hover:bg-[#f59e0b] text-black font-extrabold text-sm px-6 py-4 rounded-xl tracking-wider shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                        >
+                            Ir a pagar
+                            <ArrowRight className="w-4 h-4" />
+                        </Link>
 
-                    <button 
-                        onClick={onClose}
-                        className="w-full mt-4 text-xs font-bold text-white/50 hover:text-white uppercase tracking-wider transition-colors py-2"
-                    >
-                        Seguir Explorando
-                    </button>
-                </div>
+                        <button 
+                            onClick={onClose}
+                            className="w-full mt-4 text-xs font-bold text-white/50 hover:text-white uppercase tracking-wider transition-colors py-2"
+                        >
+                            Seguir Explorando
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );

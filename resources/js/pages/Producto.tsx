@@ -127,7 +127,34 @@ export default function Producto({ product, relatedProducts = [] }: { product: a
     // 3. Specifications details state
     const [showSpecs, setShowSpecs] = useState(false);
     const [showSizeGuide, setShowSizeGuide] = useState(false);
-    const [isCartOpen, setIsCartOpen] = useState(false);
+
+    const handleAddToCart = () => {
+        const newItem = {
+            id: `${product.id}-${selectedSize}-${selectedColor}-${startDate}-${endDate}-${Date.now()}`,
+            product,
+            selectedSize,
+            selectedColor,
+            rentDays,
+            startDate,
+            endDate
+        };
+
+        const stored = localStorage.getItem('armario_rental_cart');
+        let cartList = [];
+        if (stored) {
+            try {
+                const parsed = JSON.parse(stored);
+                cartList = Array.isArray(parsed) ? parsed : [parsed];
+            } catch (e) {
+                cartList = [];
+            }
+        }
+        
+        cartList.push(newItem);
+        localStorage.setItem('armario_rental_cart', JSON.stringify(cartList));
+        window.dispatchEvent(new CustomEvent('cart-changed'));
+        window.dispatchEvent(new CustomEvent('open-cart'));
+    };
 
     // Dynamic specs from product
     const specsData = product?.specifications || [];
@@ -498,10 +525,10 @@ export default function Producto({ product, relatedProducts = [] }: { product: a
                                 {/* Action Button */}
                                 {isAvailable ? (
                                     <button
-                                        onClick={() => setIsCartOpen(true)}
-                                        className="bg-[#e28700] hover:bg-[#f59e0b] text-black font-extrabold text-xs px-6 py-4 rounded-xl tracking-wider shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all"
+                                        onClick={handleAddToCart}
+                                        className="bg-[#e28700] hover:bg-[#f59e0b] text-black font-extrabold text-xs px-6 py-4 rounded-xl tracking-wider shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all uppercase"
                                     >
-                                        RESERVAR PRENDA
+                                        Añadir al carrito
                                     </button>
                                 ) : (
                                     <button
@@ -742,16 +769,6 @@ export default function Producto({ product, relatedProducts = [] }: { product: a
                 </div>
             )}
 
-            <CartDrawer
-                isOpen={isCartOpen}
-                onClose={() => setIsCartOpen(false)}
-                product={product}
-                selectedSize={selectedSize}
-                selectedColor={selectedColor}
-                rentDays={rentDays}
-                startDate={startDate}
-                endDate={endDate}
-            />
         </PublicLayout>
     );
 }

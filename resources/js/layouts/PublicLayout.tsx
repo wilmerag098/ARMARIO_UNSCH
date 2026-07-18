@@ -18,6 +18,7 @@ import {
     Phone
 } from 'lucide-react';
 import { Link, usePage } from '@inertiajs/react';
+import CartDrawer from '@/components/CartDrawer';
 
 interface PublicLayoutProps {
     children: ReactNode;
@@ -37,6 +38,48 @@ export default function PublicLayout({ children, auth }: PublicLayoutProps) {
     const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
     const [isCategoriesDropdownOpen, setIsCategoriesDropdownOpen] = useState(false);
     const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+    const [isCartOpen, setIsCartOpen] = useState(false);
+    const [cartItems, setCartItems] = useState<any[]>([]);
+
+    const updateCartFromStorage = () => {
+        const stored = localStorage.getItem('armario_rental_cart');
+        if (stored) {
+            try {
+                const parsed = JSON.parse(stored);
+                setCartItems(Array.isArray(parsed) ? parsed : [parsed]);
+            } catch (e) {
+                setCartItems([]);
+            }
+        } else {
+            setCartItems([]);
+        }
+    };
+
+    const handleRemoveItem = (id: string) => {
+        const updated = cartItems.filter(item => item.id !== id);
+        localStorage.setItem('armario_rental_cart', JSON.stringify(updated));
+        window.dispatchEvent(new CustomEvent('cart-changed'));
+    };
+
+    useEffect(() => {
+        updateCartFromStorage();
+        
+        const handleCartChange = () => {
+            updateCartFromStorage();
+        };
+
+        const handleOpenCart = () => {
+            setIsCartOpen(true);
+        };
+
+        window.addEventListener('cart-changed', handleCartChange);
+        window.addEventListener('open-cart', handleOpenCart);
+
+        return () => {
+            window.removeEventListener('cart-changed', handleCartChange);
+            window.removeEventListener('open-cart', handleOpenCart);
+        };
+    }, []);
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -124,13 +167,18 @@ export default function PublicLayout({ children, auth }: PublicLayoutProps) {
                             </Link>
 
                             {/* Carrito */}
-                            <button className="flex flex-col items-center hover:text-[#dfb279] transition-colors group cursor-pointer relative">
+                            <button 
+                                onClick={() => setIsCartOpen(true)}
+                                className="flex flex-col items-center hover:text-[#dfb279] transition-colors group cursor-pointer relative focus:outline-none"
+                            >
                                 <div className="relative">
                                     <ShoppingBag className="h-5 w-5 transition-transform duration-200 group-hover:scale-110" strokeWidth={1.75} />
                                     {/* Badge Carrito */}
-                                    <span className="absolute -top-1.5 -right-2 h-4 w-4 bg-[#dfb279] text-[#3d0d16] rounded-full text-[9px] font-black flex items-center justify-center shadow border border-white">
-                                        1
-                                    </span>
+                                    {cartItems.length > 0 && (
+                                        <span className="absolute -top-1.5 -right-2 h-4 w-4 bg-[#dfb279] text-[#3d0d16] rounded-full text-[9px] font-black flex items-center justify-center shadow border border-[#3d0d16] animate-in zoom-in duration-200">
+                                            {cartItems.length}
+                                        </span>
+                                    )}
                                 </div>
                                 <span className="hidden sm:inline text-[10px] font-bold text-[#dfb279]/80 group-hover:text-[#dfb279] mt-0.5 uppercase tracking-wider">Carrito</span>
                             </button>
@@ -448,6 +496,13 @@ export default function PublicLayout({ children, auth }: PublicLayoutProps) {
                     </div>
                 </div>
             </footer>
+
+            <CartDrawer
+                isOpen={isCartOpen}
+                onClose={() => setIsCartOpen(false)}
+                cartItems={cartItems}
+                onRemoveItem={handleRemoveItem}
+            />
         </div>
     );
 }

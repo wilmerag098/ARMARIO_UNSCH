@@ -51,7 +51,7 @@ export default function Checkout({ product, accessories = [], promotion }: { pro
         email: '',
         password: '',
         accessories: [] as { product_id: number; inventory_id: number }[],
-        payment_method: 'yape',
+        payment_method: 'mercadopago',
         payment_reference: '',
     });
 
@@ -96,9 +96,11 @@ export default function Checkout({ product, accessories = [], promotion }: { pro
     const { diffDays, subtotal, accessoriesSubtotal, discountAmount, isPromoApplicable, serviceFee, total } = calculateTotal();
 
     const handleCheckoutSubmit = () => {
-        if (!data.payment_reference || data.payment_reference.length < 8) {
-            alert('Por favor, ingresa un código de operación válido de al menos 8 dígitos.');
-            return;
+        if (data.payment_method !== 'mercadopago') {
+            if (!data.payment_reference || data.payment_reference.length < 8) {
+                alert('Por favor, ingresa un código de operación válido de al menos 8 dígitos.');
+                return;
+            }
         }
         post('/checkout', {
             preserveScroll: true,
@@ -681,70 +683,104 @@ export default function Checkout({ product, accessories = [], promotion }: { pro
                                 </p>
 
                                 {/* Payment Tab Selector */}
-                                <div className="flex gap-4 p-1.5 bg-[#0e0204] rounded-2xl border border-[#3e121b]/50">
+                                <div className="grid grid-cols-3 gap-2.5 p-1.5 bg-[#0e0204] rounded-2xl border border-[#3e121b]/50">
                                     <button
                                         type="button"
-                                        onClick={() => setData('payment_method', 'yape')}
-                                        className={`flex-1 py-3.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                                        onClick={() => setData(prev => ({ ...prev, payment_method: 'mercadopago', payment_reference: '' }))}
+                                        className={`py-3.5 rounded-xl font-bold text-[10px] md:text-xs transition-all flex items-center justify-center gap-1.5 ${
+                                            data.payment_method === 'mercadopago'
+                                                ? 'bg-[#ffb6c5]/15 border border-[#ffb6c5]/45 text-[#ffb6c5] shadow-md shadow-[#ffb6c5]/5'
+                                                : 'text-white/50 hover:text-white border border-transparent'
+                                        }`}
+                                    >
+                                        <CreditCard size={13} />
+                                        ONLINE
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setData(prev => ({ ...prev, payment_method: 'yape', payment_reference: '' }))}
+                                        className={`py-3.5 rounded-xl font-bold text-[10px] md:text-xs transition-all flex items-center justify-center gap-1.5 ${
                                             data.payment_method === 'yape'
                                                 ? 'bg-[#00d6c4]/15 border border-[#00d6c4]/45 text-[#00d6c4] shadow-md shadow-[#00d6c4]/5'
                                                 : 'text-white/50 hover:text-white border border-transparent'
                                         }`}
                                     >
-                                        <span className="w-2.5 h-2.5 rounded-full bg-[#00d6c4]" />
+                                        <span className="w-2 h-2 rounded-full bg-[#00d6c4]" />
                                         YAPE
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => setData('payment_method', 'plin')}
-                                        className={`flex-1 py-3.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                                        onClick={() => setData(prev => ({ ...prev, payment_method: 'plin', payment_reference: '' }))}
+                                        className={`py-3.5 rounded-xl font-bold text-[10px] md:text-xs transition-all flex items-center justify-center gap-1.5 ${
                                             data.payment_method === 'plin'
                                                 ? 'bg-[#00b050]/15 border border-[#00b050]/45 text-[#00b050] shadow-md shadow-[#00b050]/5'
                                                 : 'text-white/50 hover:text-white border border-transparent'
                                         }`}
                                     >
-                                        <span className="w-2.5 h-2.5 rounded-full bg-[#00b050]" />
+                                        <span className="w-2 h-2 rounded-full bg-[#00b050]" />
                                         PLIN
                                     </button>
                                 </div>
 
-                                {/* QR Card Display */}
-                                <div className="bg-[#0e0204]/70 border border-[#3e121b]/60 rounded-3xl p-6 flex flex-col items-center justify-center gap-4 max-w-sm mx-auto shadow-inner">
-                                    <div className="text-center">
-                                        <span className={`text-[10px] font-extrabold tracking-widest px-3 py-1 rounded-full text-xs uppercase ${
-                                            data.payment_method === 'yape' ? 'bg-[#00d6c4]/10 text-[#00d6c4]' : 'bg-[#00b050]/10 text-[#00b050]'
-                                        }`}>
-                                            Pagar con {data.payment_method}
-                                        </span>
+                                {data.payment_method === 'mercadopago' ? (
+                                    /* Mercado Pago Details */
+                                    <div className="bg-[#0e0204]/70 border border-[#ffb6c5]/20 rounded-3xl p-6 flex flex-col items-center justify-center gap-4 text-center max-w-md mx-auto shadow-inner">
+                                        <div className="p-3.5 bg-[#ffb6c5]/10 rounded-full text-[#ffb6c5]">
+                                            <CreditCard size={28} />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <h3 className="font-extrabold text-white text-base">Pago Seguro Online</h3>
+                                            <p className="text-xs text-white/60 max-w-xs leading-relaxed">
+                                                Usa tarjetas de crédito, débito o tu cuenta de Mercado Pago. La confirmación del pago es <strong>instantánea</strong> y totalmente automática.
+                                            </p>
+                                        </div>
+                                        <div className="bg-[#ffb6c5]/5 border border-[#ffb6c5]/20 px-3.5 py-2.5 rounded-xl text-[10px] text-[#ffb6c5] flex items-center gap-2">
+                                            <Shield size={12} />
+                                            <span>Transacción protegida por Mercado Pago</span>
+                                        </div>
                                     </div>
-                                    
-                                    <div className="w-56 h-56 rounded-2xl overflow-hidden bg-white p-2.5 border-4 border-[#3e121b]/40 flex items-center justify-center shadow-lg shadow-black/80">
-                                        <img
-                                            src={data.payment_method === 'yape' ? '/images/yape_qr.jpg' : '/images/plin_qr.jpg'}
-                                            alt={`QR ${data.payment_method}`}
-                                            className="w-full h-full object-contain"
-                                        />
-                                    </div>
-                                    <span className="text-xs text-white/40 text-center font-medium">Escanea y yapea/plinea el monto exacto</span>
-                                </div>
+                                ) : (
+                                    /* Original QR Display & Operation Code Input */
+                                    <>
+                                        {/* QR Card Display */}
+                                        <div className="bg-[#0e0204]/70 border border-[#3e121b]/60 rounded-3xl p-6 flex flex-col items-center justify-center gap-4 max-w-sm mx-auto shadow-inner">
+                                            <div className="text-center">
+                                                <span className={`text-[10px] font-extrabold tracking-widest px-3 py-1 rounded-full text-xs uppercase ${
+                                                    data.payment_method === 'yape' ? 'bg-[#00d6c4]/10 text-[#00d6c4]' : 'bg-[#00b050]/10 text-[#00b050]'
+                                                }`}>
+                                                    Pagar con {data.payment_method}
+                                                </span>
+                                            </div>
+                                            
+                                            <div className="w-56 h-56 rounded-2xl overflow-hidden bg-white p-2.5 border-4 border-[#3e121b]/40 flex items-center justify-center shadow-lg shadow-black/80">
+                                                <img
+                                                    src={data.payment_method === 'yape' ? '/images/yape_qr.jpg' : '/images/plin_qr.jpg'}
+                                                    alt={`QR ${data.payment_method}`}
+                                                    className="w-full h-full object-contain"
+                                                />
+                                            </div>
+                                            <span className="text-xs text-white/40 text-center font-medium">Escanea y yapea/plinea el monto exacto</span>
+                                        </div>
 
-                                {/* Operation Code Input */}
-                                <div className="pt-4 border-t border-[#3e121b]/40 space-y-3">
-                                    <label className="block text-xs font-bold text-white/70 uppercase tracking-wider">Código de Operación (8 dígitos)</label>
-                                    <div className="relative">
-                                        <input
-                                            type="text"
-                                            maxLength={8}
-                                            value={data.payment_reference}
-                                            onChange={e => setData('payment_reference', e.target.value.replace(/\D/g, ''))}
-                                            placeholder="Ingresa los 8 dígitos"
-                                            className="w-full bg-[#0e0204] border border-[#3e121b] text-white rounded-xl px-4 py-3.5 focus:outline-none focus:border-[#ffb6c5] focus:ring-1 focus:ring-[#ffb6c5] text-center text-lg font-extrabold tracking-widest transition-all"
-                                            required
-                                        />
-                                    </div>
-                                    {errors.payment_reference && <p className="text-red-400 text-xs mt-1">{errors.payment_reference}</p>}
-                                    <p className="text-[10px] text-white/40 text-center">Este código es necesario para que el administrador verifique tu depósito de garantía y pago de renta.</p>
-                                </div>
+                                        {/* Operation Code Input */}
+                                        <div className="pt-4 border-t border-[#3e121b]/40 space-y-3">
+                                            <label className="block text-xs font-bold text-white/70 uppercase tracking-wider">Código de Operación (8 dígitos)</label>
+                                            <div className="relative">
+                                                <input
+                                                    type="text"
+                                                    maxLength={8}
+                                                    value={data.payment_reference}
+                                                    onChange={e => setData('payment_reference', e.target.value.replace(/\D/g, ''))}
+                                                    placeholder="Ingresa los 8 dígitos"
+                                                    className="w-full bg-[#0e0204] border border-[#3e121b] text-white rounded-xl px-4 py-3.5 focus:outline-none focus:border-[#ffb6c5] focus:ring-1 focus:ring-[#ffb6c5] text-center text-lg font-extrabold tracking-widest transition-all"
+                                                    required
+                                                />
+                                            </div>
+                                            {errors.payment_reference && <p className="text-red-400 text-xs mt-1">{errors.payment_reference}</p>}
+                                            <p className="text-[10px] text-white/40 text-center">Este código es necesario para que el administrador verifique tu depósito de garantía y pago de renta.</p>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         )}
                     </div>
@@ -855,11 +891,15 @@ export default function Checkout({ product, accessories = [], promotion }: { pro
                                         <button
                                             type="button"
                                             onClick={handleCheckoutSubmit}
-                                            disabled={processing || !data.payment_reference}
+                                            disabled={processing || (data.payment_method !== 'mercadopago' && !data.payment_reference)}
                                             className="w-full bg-[#ffb6c5] text-[#1b0308] hover:bg-[#ffc6d2] font-extrabold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#ffb6c5]/20 disabled:opacity-50 disabled:shadow-none tracking-wider text-xs uppercase"
                                         >
                                             <Lock size={14} />
-                                            {processing ? 'Verificando...' : 'Confirmar Reserva'}
+                                            {processing 
+                                                ? 'Procesando...' 
+                                                : (data.payment_method === 'mercadopago' 
+                                                    ? 'Pagar con Mercado Pago' 
+                                                    : 'Confirmar Reserva')}
                                         </button>
                                         <button
                                             type="button"

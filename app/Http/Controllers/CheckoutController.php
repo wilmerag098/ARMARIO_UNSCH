@@ -8,6 +8,8 @@ use App\Models\Product;
 use App\Models\Reservation;
 use App\Models\ReservationItem;
 use Illuminate\Support\Facades\Auth;
+use MercadoPago\MercadoPagoConfig;
+use MercadoPago\Client\Preference\PreferenceClient;
 
 class CheckoutController extends Controller
 {
@@ -52,8 +54,8 @@ class CheckoutController extends Controller
             'accessories' => 'nullable|array',
             'accessories.*.product_id' => 'required|exists:products,id',
             'accessories.*.inventory_id' => 'required|exists:inventories,id',
-            'payment_method' => 'required|string|in:yape,plin',
-            'payment_reference' => 'required|string|min:8|max:20',
+            'payment_method' => 'required|string|in:yape,plin,mercadopago',
+            'payment_reference' => 'required_if:payment_method,yape,plin|nullable|string|min:8|max:20',
         ]);
 
         $product = Product::where('status', 'active')->findOrFail($validated['product_id']);
@@ -133,7 +135,7 @@ class CheckoutController extends Controller
             'discount_amount' => $discountAmount,
             'promotion_id' => $appliedPromotionId,
             'payment_method' => $validated['payment_method'],
-            'payment_reference' => $validated['payment_reference'],
+            'payment_reference' => $validated['payment_reference'] ?? 'PENDIENTE_MP',
             'status' => 'pendiente'
         ]);
 
@@ -148,6 +150,59 @@ class CheckoutController extends Controller
                 'end_date' => $validated['end_date'],
                 'subtotal' => $item['subtotal']
             ]);
+        }
+
+        if ($validated['payment_method'] === 'mercadopago') {
+            try {
+                $token = config('services.mercadopago.token');
+                if (!$token) {
+                    throw new \Exception('El token de acceso de MercadoPago no está configurado.');
+                }
+
+                MercadoPagoConfig::setAccessToken($token);
+
+                if (config('app.env') === 'local') {
+                    MercadoPagoConfig::setRuntimeEnviroment(MercadoPagoConfig::LOCAL);
+                }
+
+                $client = new PreferenceClient();
+                
+                $preferenceData = [
+                    "items" => [
+                        [
+                            "id" => (string) $product->id,
+                            "title" => "Alquiler de Prenda - Orden " . $orderNumber,
+                            "quantity" => 1,
+                            "unit_price" => (float) $totalAmount,
+                            "currency_id" => "PEN"
+                        ]
+                    ],
+                    "back_urls" => [
+                        "success" => route('perfil', ['payment_status' => 'success']),
+                        "failure" => route('catalogo', ['payment_status' => 'failure']),
+                        "pending" => route('perfil', ['payment_status' => 'pending']),
+                    ],
+                    "auto_return" => "approved",
+                    "external_reference" => (string) $orderNumber,
+                ];
+
+                // Excluir notification_url si es localhost/127.0.0.1 para evitar error 400 de MercadoPago API
+                $webhookUrl = route('webhooks.mercadopago');
+                if (!str_contains($webhookUrl, 'localhost') && !str_contains($webhookUrl, '127.0.0.1')) {
+                    $preferenceData["notification_url"] = $webhookUrl;
+                }
+
+                $preference = $client->create($preferenceData);
+
+                return redirect()->away($preference->init_point);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Error creando preferencia en MercadoPago: ' . $e->getMessage(), [
+                    'exception' => $e
+                ]);
+                return redirect()->back()->withErrors([
+                    'payment_method' => 'No se pudo generar el enlace de pago seguro: ' . $e->getMessage()
+                ]);
+            }
         }
 
         return redirect()->route('perfil')->with('success', '¡Reserva confirmada!');

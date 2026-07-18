@@ -34,6 +34,8 @@ Route::get('/producto/{slug}', [ProductController::class, 'show'])->name('produc
 Route::post('/checkout/register', [CheckoutController::class, 'fastRegister'])->name('checkout.register');
 Route::get('/checkout/{product:slug}', [CheckoutController::class, 'index'])->name('checkout');
 
+Route::post('/webhooks/mercadopago', [App\Http\Controllers\MercadoPagoWebhookController::class, 'handle'])->name('webhooks.mercadopago');
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
     
