@@ -321,12 +321,15 @@ class AdminController extends Controller
 
     public function inventory()
     {
-        $inventories = Inventory::with('product')
+        $inventories = Inventory::with(['product.category'])
             ->orderBy('sku', 'asc')
             ->get();
 
+        $products = Product::orderBy('name', 'asc')->get();
+
         return Inertia::render('admin/Inventory', [
-            'inventories' => $inventories
+            'inventories' => $inventories,
+            'products' => $products
         ]);
     }
 
@@ -356,7 +359,9 @@ class AdminController extends Controller
 
     public function users()
     {
-        $users = User::orderBy('name', 'asc')->get();
+        $users = User::withCount(['reservations as active_reservations_count' => function ($query) {
+            $query->whereNotIn('status', ['devuelta', 'rechazada']);
+        }])->orderBy('name', 'asc')->get();
 
         return Inertia::render('admin/Users', [
             'users' => $users
@@ -500,4 +505,143 @@ class AdminController extends Controller
 
         return redirect()->back()->with('success', 'Administrador creado correctamente.');
     }
+
+    public function updateUser(Request $request, User $user)
+    {
+        $validated = $request->validate([
+            'names' => 'required|string|max:255',
+            'lastNames' => 'required|string|max:255',
+            'dni' => 'required|string|max:20|unique:users,dni,' . $user->id,
+            'university_id' => 'nullable|string|max:50|unique:users,university_id,' . $user->id,
+            'roleDetail' => 'nullable|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email,' . $user->id,
+            'address' => 'nullable|string|max:255',
+            'phone' => 'nullable|string|max:50',
+            'avatar' => 'nullable|image|max:2048',
+            'role' => 'required|string|in:admin,user',
+            'status' => 'required|string|in:active,inactive,suspended',
+            'type' => 'required|string|in:estudiante,docente,personal',
+            'password' => 'nullable|string|min:8|confirmed',
+        ]);
+
+        $userData = [
+            'name' => $request->names,
+            'last_name' => $request->lastNames,
+            'dni' => $request->dni,
+            'university_id' => $request->university_id,
+            'position' => $request->roleDetail,
+            'email' => $request->email,
+            'address' => $request->address,
+            'phone' => $request->phone,
+            'role' => $request->role,
+            'status' => $request->status,
+            'type' => $request->type,
+        ];
+
+        if ($request->filled('password')) {
+            $userData['password'] = bcrypt($request->password);
+        }
+
+        if ($request->hasFile('avatar')) {
+            $file = $request->file('avatar');
+            if ($file->isValid()) {
+                $filename = time() . '_avatar_user_' . $user->id . '.' . $file->getClientOriginalExtension();
+                $file->move(public_path('images/avatars'), $filename);
+                
+                if ($user->profile_photo_path && file_exists(public_path($user->profile_photo_path))) {
+                    @unlink(public_path($user->profile_photo_path));
+                }
+
+                $userData['profile_photo_path'] = '/images/avatars/' . $filename;
+            }
+        }
+
+        $user->update($userData);
+
+        return redirect()->back()->with('success', 'Usuario actualizado correctamente.');
+    }
+
+    public function updateUserStatus(Request $request, User $user)
+    {
+        $request->validate([
+            'status' => 'required|string|in:active,inactive,suspended'
+        ]);
+
+        $user->update(['status' => $request->status]);
+
+        return redirect()->back()->with('success', 'Estado del usuario actualizado correctamente.');
+    }
+
+    public function resetUserPassword(Request $request, User $user)
+    {
+        $request->validate([
+            'password' => 'required|string|min:8|confirmed'
+        ]);
+
+        $user->update(['password' => bcrypt($request->password)]);
+
+        return redirect()->back()->with('success', 'Contraseña del usuario restablecida correctamente.');
+    }
+
+    public function deleteUser(User $user)
+    {
+        if ($user->id === auth()->id()) {
+            return redirect()->back()->with('error', 'No puedes eliminar tu propia cuenta.');
+        }
+
+        if ($user->profile_photo_path && file_exists(public_path($user->profile_photo_path))) {
+            @unlink(public_path($user->profile_photo_path));
+        }
+
+        $user->delete();
+
+        return redirect()->back()->with('success', 'Usuario eliminado correctamente.');
+    }
+
+    public function storeInventory(Request $request)
+    {
+        $validated = $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'size' => 'required|string|max:10',
+            'sku' => 'required|string|max:50|unique:inventories,sku',
+            'status' => 'required|string|in:available,maintenance,rented,damaged',
+        ]);
+
+        Inventory::create($validated);
+
+        return redirect()->back()->with('success', 'Ejemplar de inventario agregado correctamente.');
+    }
+
+    public function updateInventory(Request $request, Inventory $inventory)
+    {
+        $validated = $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'size' => 'required|string|max:10',
+            'sku' => 'required|string|max:50|unique:inventories,sku,' . $inventory->id,
+            'status' => 'required|string|in:available,maintenance,rented,damaged',
+        ]);
+
+        $inventory->update($validated);
+
+        return redirect()->back()->with('success', 'Ejemplar de inventario actualizado correctamente.');
+    }
+
+    public function updateInventoryStatus(Request $request, Inventory $inventory)
+    {
+        $request->validate([
+            'status' => 'required|string|in:available,maintenance,rented,damaged'
+        ]);
+
+        $inventory->update(['status' => $request->status]);
+
+        return redirect()->back()->with('success', 'Estado de la prenda física actualizado correctamente.');
+    }
+
+    public function deleteInventory(Inventory $inventory)
+    {
+        $inventory->delete();
+
+        return redirect()->back()->with('success', 'Ejemplar de inventario eliminado correctamente.');
+    }
 }
+

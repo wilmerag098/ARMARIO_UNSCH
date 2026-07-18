@@ -36,6 +36,10 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->group(functio
     Route::put('/productos/{product}', [AdminController::class, 'updateProduct'])->name('admin.products.update');
     Route::delete('/productos/{product}', [AdminController::class, 'deleteProduct'])->name('admin.products.delete');
     Route::get('/inventario', [AdminController::class, 'inventory'])->name('admin.inventory');
+    Route::post('/inventario', [AdminController::class, 'storeInventory'])->name('admin.inventory.store');
+    Route::put('/inventario/{inventory}', [AdminController::class, 'updateInventory'])->name('admin.inventory.update');
+    Route::patch('/inventario/{inventory}/status', [AdminController::class, 'updateInventoryStatus'])->name('admin.inventory.update-status');
+    Route::delete('/inventario/{inventory}', [AdminController::class, 'deleteInventory'])->name('admin.inventory.delete');
     Route::get('/reservas', [AdminController::class, 'reservations'])->name('admin.reservations');
     Route::put('/reservas/{reservation}/status', [AdminController::class, 'updateReservationStatus'])->name('admin.reservations.update-status');
     Route::get('/usuarios', [AdminController::class, 'users'])->name('admin.users');
@@ -46,6 +50,10 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->group(functio
     })->name('admin.profile');
     Route::patch('/perfil', [AdminController::class, 'updateProfile'])->name('admin.profile.update');
     Route::post('/usuarios/admin', [AdminController::class, 'storeAdmin'])->name('admin.users.store-admin');
+    Route::patch('/usuarios/{user}', [AdminController::class, 'updateUser'])->name('admin.users.update-user');
+    Route::patch('/usuarios/{user}/status', [AdminController::class, 'updateUserStatus'])->name('admin.users.update-status');
+    Route::patch('/usuarios/{user}/reset-password', [AdminController::class, 'resetUserPassword'])->name('admin.users.reset-password');
+    Route::delete('/usuarios/{user}', [AdminController::class, 'deleteUser'])->name('admin.users.delete');
 });
 
 require __DIR__.'/settings.php';
