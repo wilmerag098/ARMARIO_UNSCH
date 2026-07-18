@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { Head, useForm, router } from '@inertiajs/react';
 import AdminLayout from '@/layouts/AdminLayout';
-import { Plus, Tag, Image, ChevronDown, Check, ArrowLeft, Upload, Loader2, X, Trash2 } from 'lucide-react';
+import { Plus, Tag, Image, ChevronDown, Check, ArrowLeft, Upload, Loader2, X, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import Pagination from '@/components/Pagination';
 
 interface Product {
     id: number;
@@ -40,11 +41,22 @@ interface ProductsProps {
 }
 
 export default function Products({ products, categories }: ProductsProps) {
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+    const totalPages = Math.ceil(products.length / itemsPerPage);
+    const currentProducts = products.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
     const [showAddForm, setShowAddForm] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+    const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 4000);
+    };
     
     const [imagePreviews, setImagePreviews] = useState<(string | null)[]>([null, null, null, null, null]);
     const fileRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -187,6 +199,10 @@ export default function Products({ products, categories }: ProductsProps) {
                 onSuccess: () => {
                     setDeleteConfirmOpen(false);
                     setProductToDelete(null);
+                    showToast('¡Prenda eliminada con éxito!', 'success');
+                },
+                onError: () => {
+                    showToast('Error al eliminar la prenda.', 'error');
                 }
             });
         }
@@ -198,13 +214,19 @@ export default function Products({ products, categories }: ProductsProps) {
             ? `/admin/productos/${editingProduct.id}` 
             : '/admin/productos';
         post(url, {
+            forceFormData: true,
             onSuccess: () => {
                 reset();
                 setImagePreviews([null, null, null, null, null]);
                 setShowAddForm(false);
                 setIsEditing(false);
                 setEditingProduct(null);
+                showToast(isEditing ? '¡Prenda actualizada con éxito!' : '¡Prenda registrada con éxito!', 'success');
             },
+            onError: (err) => {
+                console.error(err);
+                showToast('Error al guardar la prenda. Revise los campos obligatorios.', 'error');
+            }
         });
     };
 
@@ -261,7 +283,7 @@ export default function Products({ products, categories }: ProductsProps) {
                                 </thead>
                                 <tbody className="divide-y divide-[#f3e8ea] text-sm text-[#290a0f]">
                                     {products.length > 0 ? (
-                                        products.map((product) => (
+                                        currentProducts.map((product) => (
                                             <tr key={product.id} className="hover:bg-[#fdf9fa] transition-colors">
                                                 <td className="px-6 py-4 flex items-center gap-4">
                                                     {product.image_url ? (
@@ -337,6 +359,12 @@ export default function Products({ products, categories }: ProductsProps) {
                                 </tbody>
                             </table>
                         </div>
+                        <Pagination 
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            onPageChange={setCurrentPage}
+                            theme="light"
+                        />
                     </div>
                 </div>
             ) : (
@@ -802,6 +830,22 @@ export default function Products({ products, categories }: ProductsProps) {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Toast Notification Alert */}
+            {toast && (
+                <div className={`fixed bottom-5 right-5 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl border text-sm font-semibold shadow-lg animate-in fade-in slide-in-from-bottom-5 duration-300 ${
+                    toast.type === 'success' 
+                        ? 'bg-[#e6fcf5] border-[#c3fae8] text-[#0ca678]' 
+                        : 'bg-[#fff5f5] border-[#ffe3e3] text-[#c92a2a]'
+                }`}>
+                    {toast.type === 'success' ? (
+                        <CheckCircle className="h-5 w-5 text-[#0ca678]" />
+                    ) : (
+                        <AlertCircle className="h-5 w-5 text-[#c92a2a]" />
+                    )}
+                    <span>{toast.message}</span>
+                </div>
+            )}
         </>
     );
 }

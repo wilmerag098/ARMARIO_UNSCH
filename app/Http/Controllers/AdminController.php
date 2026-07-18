@@ -100,13 +100,13 @@ class AdminController extends Controller
                 'type' => 'warning',
                 'title' => "$lowStockCount productos con stock bajo",
                 'description' => 'Verificar inventario de percheros.',
-                'time' => 'Hace 1h'
+                'time' => 'Ahora mismo'
             ],
             [
                 'type' => 'info',
                 'title' => "$upcomingReturns alquileres próximos a vencer",
                 'description' => 'Revisar calendario de devoluciones.',
-                'time' => 'Hace 2h'
+                'time' => 'Hoy/Mañana'
             ],
         ];
 
@@ -115,16 +115,19 @@ class AdminController extends Controller
                 'type' => 'success',
                 'title' => "Pago recibido - Pedido #" . $recentPayment->order_number,
                 'description' => "S/ " . number_format($recentPayment->total_amount, 2),
-                'time' => 'Hace 3h'
+                'time' => Carbon::parse($recentPayment->updated_at)->diffForHumans()
             ];
         }
 
-        $alerts[] = [
-            'type' => 'user',
-            'title' => "Nuevo usuario registrado",
-            'description' => "Se ha registrado un nuevo estudiante.",
-            'time' => 'Hace 5h'
-        ];
+        $latestUser = User::where('id', '!=', auth()->id())->orderBy('created_at', 'desc')->first();
+        if ($latestUser) {
+            $alerts[] = [
+                'type' => 'user',
+                'title' => "Nuevo estudiante: {$latestUser->name}",
+                'description' => "Se ha registrado el correo {$latestUser->email}.",
+                'time' => Carbon::parse($latestUser->created_at)->diffForHumans()
+            ];
+        }
 
         return Inertia::render('admin/Dashboard', [
             'metrics' => [
@@ -163,12 +166,17 @@ class AdminController extends Controller
 
     public function storeProduct(Request $request)
     {
-        if ($request->has('images') && is_array($request->images)) {
-            $request->merge([
-                'images' => array_filter($request->images, function ($file) {
-                    return $file !== null;
-                })
-            ]);
+        if ($request->hasFile('images') && is_array($request->file('images'))) {
+            $filteredFiles = array_filter($request->file('images'), function ($file) {
+                return $file !== null;
+            });
+            $request->files->set('images', $filteredFiles);
+            $request->merge(['images' => $filteredFiles]);
+        } else {
+            $request->offsetUnset('images');
+            if ($request->files->has('images')) {
+                $request->files->remove('images');
+            }
         }
 
         $validated = $request->validate([
@@ -258,12 +266,17 @@ class AdminController extends Controller
 
     public function updateProduct(Request $request, Product $product)
     {
-        if ($request->has('images') && is_array($request->images)) {
-            $request->merge([
-                'images' => array_filter($request->images, function ($file) {
-                    return $file !== null;
-                })
-            ]);
+        if ($request->hasFile('images') && is_array($request->file('images'))) {
+            $filteredFiles = array_filter($request->file('images'), function ($file) {
+                return $file !== null;
+            });
+            $request->files->set('images', $filteredFiles);
+            $request->merge(['images' => $filteredFiles]);
+        } else {
+            $request->offsetUnset('images');
+            if ($request->files->has('images')) {
+                $request->files->remove('images');
+            }
         }
 
         $validated = $request->validate([

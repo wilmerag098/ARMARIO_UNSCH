@@ -21,6 +21,7 @@ import {
     Banknote
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import Pagination from '@/components/Pagination';
 
 interface UserInfo {
     name: string;
@@ -64,10 +65,17 @@ export default function Payments({ reservations }: PaymentsProps) {
     const [guaranteeAction, setGuaranteeAction] = useState<'devuelta' | 'retenida'>('devuelta');
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-    // Filters
+    // Filters & Pagination
     const [searchTerm, setSearchTerm] = useState('');
     const [payFilter, setPayFilter] = useState('all');
     const [guaranteeFilter, setGuaranteeFilter] = useState('all');
+
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, payFilter, guaranteeFilter]);
 
     const paymentForm = useForm({
         payment_method: 'yape',
@@ -161,17 +169,20 @@ export default function Payments({ reservations }: PaymentsProps) {
         return matchesSearch && matchesPay && matchesGuarantee;
     });
 
+    const totalPages = Math.ceil(filteredReservations.length / itemsPerPage);
+    const currentReservations = filteredReservations.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
     const getPaymentBadge = (status: string) => {
         if (status === 'pagado') {
             return (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-950/80 text-emerald-400 border border-emerald-900/30">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                     <Check className="h-3 w-3" />
                     Pagado
                 </span>
             );
         }
         return (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-950/80 text-amber-400 border border-amber-900/30">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
                 <Hourglass className="h-3 w-3" />
                 Pendiente
             </span>
@@ -180,39 +191,39 @@ export default function Payments({ reservations }: PaymentsProps) {
 
     const getGuaranteeBadge = (res: Reservation) => {
         if (res.status === 'pendiente' || res.status === 'rechazada') {
-            return <span className="text-xs text-[#d2a9b1]/40">-</span>;
+            return <span className="text-xs text-[#571e26]/40">-</span>;
         }
 
         if (res.payment_status === 'pendiente') {
-            return <span className="text-xs text-[#d2a9b1]/60">Esperando Pago</span>;
+            return <span className="text-xs text-[#571e26]/60">Esperando Pago</span>;
         }
 
         switch (res.guarantee_status) {
             case 'pendiente':
                 return (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-950/80 text-amber-400 border border-amber-900/30">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
                         En Custodia
                     </span>
                 );
             case 'devuelta':
                 return (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-950/80 text-emerald-400 border border-emerald-900/30">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                         Reembolsada
                     </span>
                 );
             case 'retenida':
                 return (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-950/80 text-red-400 border border-red-900/30 animate-pulse">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200 animate-pulse">
                         Retenida / Daño
                     </span>
                 );
             default:
-                return <span className="text-xs text-gray-400">{res.guarantee_status}</span>;
+                return <span className="text-xs text-[#571e26]/70">{res.guarantee_status}</span>;
         }
     };
 
     const getMethodLabel = (method?: string) => {
-        if (!method) return <span className="text-[#d2a9b1]/40">-</span>;
+        if (!method) return <span className="text-[#571e26]/40">-</span>;
         switch (method) {
             case 'yape':
                 return <span className="text-xs font-bold text-sky-400 uppercase">Yape</span>;
@@ -303,16 +314,16 @@ export default function Payments({ reservations }: PaymentsProps) {
             </div>
 
             {/* Filters */}
-            <div className="bg-[#1c050a] border border-[#290a0f] p-4 rounded-2xl mb-6 shadow-xl flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="bg-white border border-[#ebd7da] p-4 rounded-2xl mb-6 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
                 {/* Search */}
                 <div className="relative w-full md:max-w-xs">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#d2a9b1]/60" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#571e26]/60" />
                     <input
                         type="text"
                         placeholder="Buscar por orden o alumno..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-[#290a0f]/40 border border-[#ffb6c5]/15 rounded-xl pl-9 pr-4 py-2 text-sm text-[#fdeaea] placeholder-[#d2a9b1]/35 focus:outline-none focus:border-[#94344c] focus:ring-1 focus:ring-[#94344c]/20 transition-all"
+                        className="w-full bg-[#fdf9fa] border border-[#ebd7da] rounded-xl pl-9 pr-4 py-2 text-sm text-[#1a050a] placeholder-[#571e26]/35 focus:outline-none focus:border-[#94344c] focus:ring-1 focus:ring-[#94344c]/20 transition-all"
                     />
                 </div>
 
@@ -320,43 +331,43 @@ export default function Payments({ reservations }: PaymentsProps) {
                 <div className="flex flex-wrap gap-3 w-full md:w-auto">
                     {/* Status filter */}
                     <div className="relative min-w-[150px]">
-                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#d2a9b1]/50" />
+                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#571e26]/50" />
                         <select
                             value={payFilter}
                             onChange={(e) => setPayFilter(e.target.value)}
-                            className="w-full bg-[#290a0f]/40 border border-[#ffb6c5]/15 rounded-xl pl-9 pr-8 py-2 text-xs text-[#fdeaea] focus:outline-none focus:border-[#94344c] transition-all appearance-none cursor-pointer"
+                            className="w-full bg-[#fdf9fa] border border-[#ebd7da] rounded-xl pl-9 pr-8 py-2 text-xs text-[#571e26] focus:outline-none focus:border-[#94344c] transition-all appearance-none cursor-pointer"
                         >
                             <option value="all">Todos los Pagos</option>
                             <option value="pendiente">Pendientes</option>
                             <option value="pagado">Pagados</option>
                         </select>
-                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#d2a9b1]/50 pointer-events-none" />
+                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#571e26]/50 pointer-events-none" />
                     </div>
 
                     {/* Guarantee Filter */}
                     <div className="relative min-w-[170px]">
-                        <Coins className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#d2a9b1]/50" />
+                        <Coins className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#571e26]/50" />
                         <select
                             value={guaranteeFilter}
                             onChange={(e) => setGuaranteeFilter(e.target.value)}
-                            className="w-full bg-[#290a0f]/40 border border-[#ffb6c5]/15 rounded-xl pl-9 pr-8 py-2 text-xs text-[#fdeaea] focus:outline-none focus:border-[#94344c] transition-all appearance-none cursor-pointer"
+                            className="w-full bg-[#fdf9fa] border border-[#ebd7da] rounded-xl pl-9 pr-8 py-2 text-xs text-[#571e26] focus:outline-none focus:border-[#94344c] transition-all appearance-none cursor-pointer"
                         >
                             <option value="all">Todas las Garantías</option>
                             <option value="pendiente">En Custodia</option>
                             <option value="devuelta">Reembolsadas</option>
                             <option value="retenida">Retenidas/Penalizadas</option>
                         </select>
-                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#d2a9b1]/50 pointer-events-none" />
+                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#571e26]/50 pointer-events-none" />
                     </div>
                 </div>
             </div>
 
             {/* Table */}
-            <div className="bg-[#1c050a] border border-[#290a0f] rounded-2xl overflow-hidden shadow-xl">
+            <div className="bg-white border border-[#ebd7da] rounded-2xl overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className="border-b border-[#290a0f] text-[#d2a9b1] text-xs uppercase tracking-wider">
+                            <tr className="border-b border-[#ebd7da] text-[#571e26] bg-[#fcf8f9] text-xs uppercase tracking-wider">
                                 <th className="px-6 py-4 font-semibold">Código Orden</th>
                                 <th className="px-6 py-4 font-semibold">Estudiante / Alumno</th>
                                 <th className="px-6 py-4 font-semibold text-center">Método</th>
@@ -368,23 +379,23 @@ export default function Payments({ reservations }: PaymentsProps) {
                                 <th className="px-6 py-4 font-semibold text-center">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-[#290a0f] text-sm">
+                        <tbody className="divide-y divide-[#f3e8ea] text-sm text-[#290a0f]">
                             {filteredReservations.length > 0 ? (
-                                filteredReservations.map((res) => {
+                                currentReservations.map((res) => {
                                     const rawTotal = Number(res.total_amount);
                                     const rawGuarantee = Number(res.guarantee_amount);
                                     const rawRental = rawTotal - rawGuarantee;
 
                                     return (
-                                        <tr key={res.id} className="hover:bg-[#290a0f]/20 transition-colors">
+                                        <tr key={res.id} className="hover:bg-[#fdf9fa] transition-colors">
                                             {/* Code */}
-                                            <td className="px-6 py-4 font-mono font-bold text-[#ffb6c5] tracking-wider">
+                                            <td className="px-6 py-4 font-mono font-bold text-[#94344c] tracking-wider">
                                                 {res.order_number}
                                             </td>
 
                                             {/* Student */}
                                             <td className="px-6 py-4">
-                                                <div className="font-semibold text-[#fdeaea]">{res.user?.name || 'Alumno Desconocido'}</div>
+                                                <div className="font-semibold text-[#1a050a]">{res.user?.name || 'Alumno Desconocido'}</div>
                                             </td>
 
                                             {/* Method */}
@@ -393,17 +404,17 @@ export default function Payments({ reservations }: PaymentsProps) {
                                             </td>
 
                                             {/* Rental price */}
-                                            <td className="px-6 py-4 text-right font-medium text-[#fdeaea]">
+                                            <td className="px-6 py-4 text-right font-medium text-[#1a050a]">
                                                 S/ {rawRental.toFixed(2)}
                                             </td>
 
                                             {/* Guarantee */}
-                                            <td className="px-6 py-4 text-right font-medium text-[#ffb6c5]">
+                                            <td className="px-6 py-4 text-right font-medium text-[#94344c]">
                                                 S/ {rawGuarantee.toFixed(2)}
                                             </td>
 
                                             {/* Total */}
-                                            <td className="px-6 py-4 text-right font-extrabold text-[#fdeaea]">
+                                            <td className="px-6 py-4 text-right font-extrabold text-[#1a050a]">
                                                 S/ {rawTotal.toFixed(2)}
                                             </td>
 
@@ -424,7 +435,7 @@ export default function Payments({ reservations }: PaymentsProps) {
                                                     {res.payment_status === 'pendiente' && res.status !== 'rechazada' && (
                                                         <button
                                                             onClick={() => handleOpenPayment(res)}
-                                                            className="inline-flex items-center gap-1 text-[11px] bg-emerald-950/40 hover:bg-emerald-950 text-emerald-400 border border-emerald-900/30 py-1.5 px-3 rounded-lg transition-all font-semibold cursor-pointer"
+                                                            className="inline-flex items-center gap-1 text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 py-1.5 px-3 rounded-lg transition-all font-semibold cursor-pointer"
                                                             title="Registrar Pago y Garantía"
                                                         >
                                                             <Banknote className="h-3 w-3" />
@@ -437,7 +448,7 @@ export default function Payments({ reservations }: PaymentsProps) {
                                                         <>
                                                             <button
                                                                 onClick={() => handleOpenGuarantee(res, 'devuelta')}
-                                                                className="inline-flex items-center gap-1 text-[11px] bg-emerald-950/40 hover:bg-emerald-950 text-emerald-400 border border-emerald-900/30 py-1.5 px-2.5 rounded-lg transition-all font-semibold cursor-pointer"
+                                                                className="inline-flex items-center gap-1 text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 py-1.5 px-2.5 rounded-lg transition-all font-semibold cursor-pointer"
                                                                 title="Devolver depósito de garantía completo"
                                                             >
                                                                 <Check className="h-3 w-3" />
@@ -445,7 +456,7 @@ export default function Payments({ reservations }: PaymentsProps) {
                                                             </button>
                                                             <button
                                                                 onClick={() => handleOpenGuarantee(res, 'retenida')}
-                                                                className="inline-flex items-center gap-1 text-[11px] bg-red-950/40 hover:bg-red-950 text-red-400 border border-red-900/30 py-1.5 px-2.5 rounded-lg transition-all font-semibold cursor-pointer"
+                                                                className="inline-flex items-center gap-1 text-[11px] bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 py-1.5 px-2.5 rounded-lg transition-all font-semibold cursor-pointer"
                                                                 title="Retener garantía por daños en la prenda"
                                                             >
                                                                 <AlertTriangle className="h-3 w-3" />
@@ -455,7 +466,7 @@ export default function Payments({ reservations }: PaymentsProps) {
                                                     )}
 
                                                     {res.payment_status === 'pagado' && res.guarantee_status !== 'pendiente' && (
-                                                        <span className="text-xs text-[#d2a9b1]/40">-</span>
+                                                        <span className="text-xs text-[#571e26]/40">-</span>
                                                     )}
                                                 </div>
                                             </td>
@@ -464,7 +475,7 @@ export default function Payments({ reservations }: PaymentsProps) {
                                 })
                             ) : (
                                 <tr>
-                                    <td colSpan={9} className="px-6 py-10 text-center text-[#d2a9b1]">
+                                    <td colSpan={9} className="px-6 py-10 text-center text-[#571e26]/70">
                                         No hay registros de transacciones con los filtros seleccionados.
                                     </td>
                                 </tr>
@@ -472,6 +483,12 @@ export default function Payments({ reservations }: PaymentsProps) {
                         </tbody>
                     </table>
                 </div>
+                <Pagination 
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    theme="light"
+                />
             </div>
 
             {/* REGISTER PAYMENT MODAL */}

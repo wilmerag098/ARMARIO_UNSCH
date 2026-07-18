@@ -60,7 +60,7 @@ class User extends Authenticatable implements PasskeyUser
 
     public function getRolAttribute(): string
     {
-        return $this->role === 'user' ? 'cliente' : $this->role;
+        return (string) ($this->role === 'user' ? 'cliente' : $this->role);
     }
 
     public function setRolAttribute($value): void
@@ -70,7 +70,7 @@ class User extends Authenticatable implements PasskeyUser
 
     public function getNombreAttribute(): string
     {
-        return $this->name;
+        return (string) $this->name;
     }
 
     public function setNombreAttribute($value): void

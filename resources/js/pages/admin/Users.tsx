@@ -27,6 +27,8 @@ import {
     Key
 } from 'lucide-react';
 
+import Pagination from '@/components/Pagination';
+
 interface User {
     id: number;
     name: string;
@@ -51,6 +53,11 @@ interface UsersProps {
 }
 
 export default function Users({ users }: UsersProps) {
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+    const totalPages = Math.ceil(users.length / itemsPerPage);
+    const currentUsers = users.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
@@ -292,11 +299,11 @@ export default function Users({ users }: UsersProps) {
                 </button>
             </div>
 
-            <div className="bg-[#1c050a] border border-[#290a0f] rounded-2xl overflow-hidden shadow-xl">
+            <div className="bg-white border border-[#ebd7da] rounded-2xl overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className="border-b border-[#290a0f] text-[#d2a9b1] text-xs uppercase tracking-wider">
+                            <tr className="border-b border-[#ebd7da] text-[#571e26] bg-[#fcf8f9] text-xs uppercase tracking-wider">
                                 <th className="px-6 py-4 font-semibold">Usuario</th>
                                 <th className="px-6 py-4 font-semibold">Código / DNI</th>
                                 <th className="px-6 py-4 font-semibold text-center">Rol</th>
@@ -305,14 +312,14 @@ export default function Users({ users }: UsersProps) {
                                 <th className="px-6 py-4 font-semibold text-center">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-[#290a0f] text-sm">
+                        <tbody className="divide-y divide-[#f3e8ea] text-sm text-[#290a0f]">
                             {users.length > 0 ? (
-                                users.map((user) => (
-                                    <tr key={user.id} className="hover:bg-[#290a0f]/20 transition-colors">
+                                currentUsers.map((user) => (
+                                    <tr key={user.id} className="hover:bg-[#fdf9fa] transition-colors">
                                         {/* Avatar & Name */}
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full overflow-hidden border border-[#ffb6c5]/25 bg-[#290a0f] flex items-center justify-center shrink-0">
+                                                <div className="w-10 h-10 rounded-full overflow-hidden border border-[#ebd7da] bg-[#faf6f7] flex items-center justify-center shrink-0">
                                                     <img
                                                         src={user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=571e26&color=ffb6c5&bold=true`}
                                                         alt={user.name}
@@ -323,28 +330,28 @@ export default function Users({ users }: UsersProps) {
                                                     />
                                                 </div>
                                                 <div>
-                                                    <div className="font-semibold text-[#fdeaea] flex items-center gap-1.5">
+                                                    <div className="font-semibold text-[#1a050a] flex items-center gap-1.5">
                                                         <span>{user.name} {user.last_name || ''}</span>
                                                     </div>
-                                                    <div className="text-xs text-[#d2a9b1]">{user.email}</div>
+                                                    <div className="text-xs text-[#571e26]/75">{user.email}</div>
                                                 </div>
                                             </div>
                                         </td>
 
                                         {/* DNI / Univ ID */}
-                                        <td className="px-6 py-4 font-mono text-[#fdeaea]">
+                                        <td className="px-6 py-4 font-mono text-[#1a050a]">
                                             {user.university_id || user.dni || '-'}
                                         </td>
 
                                         {/* Role */}
                                         <td className="px-6 py-4 text-center">
                                             {user.role === 'admin' ? (
-                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-950/80 text-red-400 border border-red-900/30">
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200">
                                                     <ShieldAlert className="h-3.5 w-3.5" />
                                                     Administrador
                                                 </span>
                                             ) : (
-                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#290a0f] text-[#ffb6c5] border border-[#ffb6c5]/10">
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#fdf2f4] text-[#94344c] border border-[#ebd7da]">
                                                     <UserCheck className="h-3.5 w-3.5" />
                                                     Estudiante
                                                 </span>
@@ -352,14 +359,14 @@ export default function Users({ users }: UsersProps) {
                                         </td>
 
                                         {/* Active Reservations Count */}
-                                        <td className="px-6 py-4 text-center font-semibold text-[#fdeaea]">
+                                        <td className="px-6 py-4 text-center font-semibold text-[#1a050a]">
                                             {user.active_reservations_count !== undefined ? (
                                                 user.active_reservations_count > 0 ? (
-                                                    <span className="inline-flex items-center justify-center bg-[#94344c]/20 border border-[#94344c]/30 text-[#ffb6c5] px-2 py-0.5 rounded-full text-xs">
+                                                    <span className="inline-flex items-center justify-center bg-[#94344c]/10 border border-[#94344c]/20 text-[#94344c] px-2 py-0.5 rounded-full text-xs">
                                                         {user.active_reservations_count} activas
                                                     </span>
                                                 ) : (
-                                                    <span className="text-[#d2a9b1]/50 text-xs">Ninguna</span>
+                                                    <span className="text-[#571e26]/50 text-xs">Ninguna</span>
                                                 )
                                             ) : (
                                                 '-'
@@ -369,19 +376,19 @@ export default function Users({ users }: UsersProps) {
                                         {/* Status */}
                                         <td className="px-6 py-4 text-center">
                                             {user.status === 'active' && (
-                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-950/80 text-emerald-400 border border-emerald-900/30">
-                                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                                     Activo
                                                 </span>
                                             )}
                                             {user.status === 'inactive' && (
-                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-zinc-950/80 text-zinc-400 border border-zinc-900/30">
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-stone-50 text-stone-700 border border-stone-200">
                                                     Inactivo
                                                 </span>
                                             )}
                                             {user.status === 'suspended' && (
-                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-950/80 text-amber-400 border border-amber-900/30">
-                                                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                                                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-ping" />
                                                     Suspendido
                                                 </span>
                                             )}
@@ -392,30 +399,30 @@ export default function Users({ users }: UsersProps) {
                                             <div className="flex items-center justify-center gap-2">
                                                 <button
                                                     onClick={() => openDetailModal(user)}
-                                                    className="p-1.5 bg-[#290a0f] hover:bg-[#571e26] text-[#ffb6c5] border border-[#ffb6c5]/10 rounded-lg transition-all cursor-pointer"
+                                                    className="p-1.5 bg-[#fdf2f4] hover:bg-[#f3e8ea] text-[#94344c] border border-[#ebd7da] rounded-lg transition-all cursor-pointer flex items-center justify-center"
                                                     title="Ver ficha completa"
                                                 >
                                                     <Eye className="h-3.5 w-3.5" />
                                                 </button>
                                                 <button
                                                     onClick={() => openEditModal(user)}
-                                                    className="p-1.5 bg-[#290a0f] hover:bg-[#571e26] text-[#ffb6c5] border border-[#ffb6c5]/10 rounded-lg transition-all cursor-pointer"
+                                                    className="p-1.5 bg-[#fdf2f4] hover:bg-[#f3e8ea] text-[#94344c] border border-[#ebd7da] rounded-lg transition-all cursor-pointer flex items-center justify-center"
                                                     title="Modificar usuario"
                                                 >
                                                     <Edit2 className="h-3.5 w-3.5" />
                                                 </button>
                                                 <button
                                                     onClick={() => openResetPasswordModal(user)}
-                                                    className="p-1.5 bg-[#290a0f] hover:bg-[#571e26] text-[#ffb6c5] border border-[#ffb6c5]/10 rounded-lg transition-all cursor-pointer"
+                                                    className="p-1.5 bg-[#fdf2f4] hover:bg-[#f3e8ea] text-[#94344c] border border-[#ebd7da] rounded-lg transition-all cursor-pointer flex items-center justify-center"
                                                     title="Restablecer contraseña"
                                                 >
                                                     <Lock className="h-3.5 w-3.5" />
                                                 </button>
                                                 <button
                                                     onClick={() => handleToggleStatus(user)}
-                                                    className={`p-1.5 border rounded-lg transition-all cursor-pointer ${user.status === 'active'
-                                                            ? 'bg-amber-950/30 border-amber-900/30 text-amber-400 hover:bg-amber-950'
-                                                            : 'bg-emerald-950/30 border-emerald-900/30 text-emerald-400 hover:bg-emerald-950'
+                                                    className={`p-1.5 border rounded-lg transition-all cursor-pointer flex items-center justify-center ${user.status === 'active'
+                                                            ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
+                                                            : 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
                                                         }`}
                                                     title={user.status === 'active' ? 'Suspender cuenta' : 'Activar cuenta'}
                                                 >
@@ -423,7 +430,7 @@ export default function Users({ users }: UsersProps) {
                                                 </button>
                                                 <button
                                                     onClick={() => openDeleteModal(user)}
-                                                    className="p-1.5 bg-[#290a0f] hover:bg-red-950/40 text-red-400 border border-red-900/30 hover:border-red-900/50 rounded-lg transition-all cursor-pointer"
+                                                    className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg transition-all cursor-pointer flex items-center justify-center"
                                                     title="Eliminar usuario"
                                                 >
                                                     <Trash2 className="h-3.5 w-3.5" />
@@ -434,7 +441,7 @@ export default function Users({ users }: UsersProps) {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={6} className="px-6 py-10 text-center text-[#d2a9b1]">
+                                    <td colSpan={6} className="px-6 py-10 text-center text-[#571e26]/75">
                                         No hay usuarios registrados.
                                     </td>
                                 </tr>
@@ -442,6 +449,12 @@ export default function Users({ users }: UsersProps) {
                         </tbody>
                     </table>
                 </div>
+                <Pagination 
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    theme="light"
+                />
             </div>
 
             {/* CREATE MODAL */}

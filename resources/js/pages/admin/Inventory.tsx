@@ -21,6 +21,7 @@ import {
     Info,
     RefreshCw
 } from 'lucide-react';
+import Pagination from '@/components/Pagination';
 
 interface Category {
     id: number;
@@ -52,6 +53,13 @@ export default function Inventory({ inventories, products }: InventoryProps) {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [sizeFilter, setSizeFilter] = useState('all');
+
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, statusFilter, sizeFilter]);
 
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -194,39 +202,42 @@ export default function Inventory({ inventories, products }: InventoryProps) {
         return matchesSearch && matchesStatus && matchesSize;
     });
 
+    const totalPages = Math.ceil(filteredInventories.length / itemsPerPage);
+    const currentInventories = filteredInventories.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'available':
                 return (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-950/80 text-emerald-400 border border-emerald-900/30">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                         Disponible
                     </span>
                 );
             case 'maintenance':
                 return (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-950/80 text-amber-400 border border-amber-900/30 animate-pulse">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
                         <AlertTriangle className="h-3 w-3" />
                         Lavandería / Limpieza
                     </span>
                 );
             case 'rented':
                 return (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-950/80 text-blue-400 border border-blue-900/30">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
                         <HelpCircle className="h-3 w-3" />
                         Alquilado
                     </span>
                 );
             case 'damaged':
                 return (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-950/80 text-red-400 border border-red-900/30 animate-pulse">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200 animate-pulse">
                         <XCircle className="h-3 w-3" />
                         Dañado / Fuera de servicio
                     </span>
                 );
             default:
                 return (
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-900 text-gray-400">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-stone-50 text-stone-700 border border-stone-200">
                         {status}
                     </span>
                 );
@@ -272,16 +283,16 @@ export default function Inventory({ inventories, products }: InventoryProps) {
             </div>
 
             {/* Filters bar */}
-            <div className="bg-[#1c050a] border border-[#290a0f] p-4 rounded-2xl mb-6 shadow-xl flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="bg-white border border-[#ebd7da] p-4 rounded-2xl mb-6 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
                 {/* Search */}
                 <div className="relative w-full md:max-w-xs">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#d2a9b1]/60" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#571e26]/60" />
                     <input
                         type="text"
                         placeholder="Buscar por SKU o prenda..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-[#290a0f]/40 border border-[#ffb6c5]/15 rounded-xl pl-9 pr-4 py-2 text-sm text-[#fdeaea] placeholder-[#d2a9b1]/35 focus:outline-none focus:border-[#94344c] focus:ring-1 focus:ring-[#94344c]/20 transition-all"
+                        className="w-full bg-[#fdf9fa] border border-[#ebd7da] rounded-xl pl-9 pr-4 py-2 text-sm text-[#1a050a] placeholder-[#571e26]/35 focus:outline-none focus:border-[#94344c] focus:ring-1 focus:ring-[#94344c]/20 transition-all"
                     />
                 </div>
 
@@ -289,11 +300,11 @@ export default function Inventory({ inventories, products }: InventoryProps) {
                 <div className="flex flex-wrap gap-3 w-full md:w-auto">
                     {/* Status filter */}
                     <div className="relative min-w-[150px]">
-                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#d2a9b1]/50" />
+                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#571e26]/50" />
                         <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="w-full bg-[#290a0f]/40 border border-[#ffb6c5]/15 rounded-xl pl-9 pr-8 py-2 text-xs text-[#fdeaea] focus:outline-none focus:border-[#94344c] transition-all appearance-none cursor-pointer"
+                            className="w-full bg-[#fdf9fa] border border-[#ebd7da] rounded-xl pl-9 pr-8 py-2 text-xs text-[#571e26] focus:outline-none focus:border-[#94344c] transition-all appearance-none cursor-pointer"
                         >
                             <option value="all">Todos los Estados</option>
                             <option value="available">Disponible</option>
@@ -301,16 +312,16 @@ export default function Inventory({ inventories, products }: InventoryProps) {
                             <option value="rented">Alquilado</option>
                             <option value="damaged">Dañado</option>
                         </select>
-                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#d2a9b1]/50 pointer-events-none" />
+                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#571e26]/50 pointer-events-none" />
                     </div>
 
                     {/* Size Filter */}
                     <div className="relative min-w-[110px]">
-                        <Shirt className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#d2a9b1]/50" />
+                        <Shirt className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#571e26]/50" />
                         <select
                             value={sizeFilter}
                             onChange={(e) => setSizeFilter(e.target.value)}
-                            className="w-full bg-[#290a0f]/40 border border-[#ffb6c5]/15 rounded-xl pl-9 pr-8 py-2 text-xs text-[#fdeaea] focus:outline-none focus:border-[#94344c] transition-all appearance-none cursor-pointer"
+                            className="w-full bg-[#fdf9fa] border border-[#ebd7da] rounded-xl pl-9 pr-8 py-2 text-xs text-[#571e26] focus:outline-none focus:border-[#94344c] transition-all appearance-none cursor-pointer"
                         >
                             <option value="all">Todas Tallas</option>
                             <option value="XS">XS</option>
@@ -320,17 +331,17 @@ export default function Inventory({ inventories, products }: InventoryProps) {
                             <option value="XL">XL</option>
                             <option value="XXL">XXL</option>
                         </select>
-                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#d2a9b1]/50 pointer-events-none" />
+                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#571e26]/50 pointer-events-none" />
                     </div>
                 </div>
             </div>
 
             {/* Table */}
-            <div className="bg-[#1c050a] border border-[#290a0f] rounded-2xl overflow-hidden shadow-xl">
+            <div className="bg-white border border-[#ebd7da] rounded-2xl overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className="border-b border-[#290a0f] text-[#d2a9b1] text-xs uppercase tracking-wider">
+                            <tr className="border-b border-[#ebd7da] text-[#571e26] bg-[#fcf8f9] text-xs uppercase tracking-wider">
                                 <th className="px-6 py-4 font-semibold">Prenda</th>
                                 <th className="px-6 py-4 font-semibold">SKU Único</th>
                                 <th className="px-6 py-4 font-semibold text-center">Talla</th>
@@ -338,14 +349,14 @@ export default function Inventory({ inventories, products }: InventoryProps) {
                                 <th className="px-6 py-4 font-semibold text-center">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-[#290a0f] text-sm">
+                        <tbody className="divide-y divide-[#f3e8ea] text-sm text-[#290a0f]">
                             {filteredInventories.length > 0 ? (
-                                filteredInventories.map((item) => (
-                                    <tr key={item.id} className="hover:bg-[#290a0f]/20 transition-colors">
+                                currentInventories.map((item) => (
+                                    <tr key={item.id} className="hover:bg-[#fdf9fa] transition-colors">
                                         {/* Prenda Info with Thumb */}
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-lg overflow-hidden border border-[#ffb6c5]/25 bg-[#290a0f] flex items-center justify-center shrink-0">
+                                                <div className="w-10 h-10 rounded-lg overflow-hidden border border-[#ebd7da] bg-[#faf6f7] flex items-center justify-center shrink-0">
                                                     <img
                                                         src={item.product?.image_url || 'https://images.unsplash.com/photo-1593030761757-71fae45fa0e7?q=80&w=800'}
                                                         alt={item.product?.name}
@@ -353,19 +364,19 @@ export default function Inventory({ inventories, products }: InventoryProps) {
                                                     />
                                                 </div>
                                                 <div>
-                                                    <div className="font-semibold text-[#fdeaea]">{item.product?.name || 'Prenda Desconocida'}</div>
-                                                    <div className="text-xs text-[#d2a9b1]/70">{item.product?.category?.name || 'Sin Categoría'}</div>
+                                                    <div className="font-semibold text-[#1a050a]">{item.product?.name || 'Prenda Desconocida'}</div>
+                                                    <div className="text-xs text-[#571e26]/70">{item.product?.category?.name || 'Sin Categoría'}</div>
                                                 </div>
                                             </div>
                                         </td>
 
                                         {/* SKU */}
-                                        <td className="px-6 py-4 font-mono font-semibold text-[#ffb6c5] tracking-wider">
+                                        <td className="px-6 py-4 font-mono font-semibold text-[#94344c] tracking-wider">
                                             {item.sku}
                                         </td>
 
                                         {/* Talla */}
-                                        <td className="px-6 py-4 text-center font-extrabold text-[#fdeaea]">
+                                        <td className="px-6 py-4 text-center font-extrabold text-[#1a050a]">
                                             {item.size}
                                         </td>
 
@@ -381,7 +392,7 @@ export default function Inventory({ inventories, products }: InventoryProps) {
                                                 {item.status === 'maintenance' && (
                                                     <button
                                                         onClick={() => handleUpdateStatus(item, 'available')}
-                                                        className="inline-flex items-center gap-1 text-xs bg-emerald-950/30 hover:bg-emerald-950 text-emerald-400 border border-emerald-900/30 hover:border-emerald-700 py-1.5 px-3 rounded-lg transition-all cursor-pointer font-semibold"
+                                                        className="inline-flex items-center gap-1 text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 py-1.5 px-3 rounded-lg transition-all cursor-pointer font-semibold"
                                                         title="Confirmar Limpieza"
                                                     >
                                                         <Check className="h-3 w-3" />
@@ -393,7 +404,7 @@ export default function Inventory({ inventories, products }: InventoryProps) {
                                                 {item.status === 'available' && (
                                                     <button
                                                         onClick={() => handleUpdateStatus(item, 'damaged')}
-                                                        className="inline-flex items-center gap-1 text-xs bg-red-950/30 hover:bg-red-950 text-red-400 border border-red-900/30 hover:border-red-700 py-1.5 px-3 rounded-lg transition-all cursor-pointer font-semibold"
+                                                        className="inline-flex items-center gap-1 text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 py-1.5 px-3 rounded-lg transition-all cursor-pointer font-semibold"
                                                         title="Reportar Daño"
                                                     >
                                                         <AlertTriangle className="h-3 w-3" />
@@ -405,7 +416,7 @@ export default function Inventory({ inventories, products }: InventoryProps) {
                                                 {item.status === 'damaged' && (
                                                     <button
                                                         onClick={() => handleUpdateStatus(item, 'maintenance')}
-                                                        className="inline-flex items-center gap-1 text-xs bg-amber-950/30 hover:bg-amber-950 text-amber-400 border border-amber-900/30 hover:border-amber-750 py-1.5 px-3 rounded-lg transition-all cursor-pointer font-semibold"
+                                                        className="inline-flex items-center gap-1 text-xs bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 py-1.5 px-3 rounded-lg transition-all cursor-pointer font-semibold"
                                                         title="Enviar a Mantenimiento"
                                                     >
                                                         <RefreshCw className="h-3 w-3 animate-spin" />
@@ -416,7 +427,7 @@ export default function Inventory({ inventories, products }: InventoryProps) {
                                                 {/* Botón Modificar */}
                                                 <button
                                                     onClick={() => openEditModal(item)}
-                                                    className="p-1.5 bg-[#290a0f] hover:bg-[#571e26] text-[#ffb6c5] border border-[#ffb6c5]/10 rounded-lg transition-all cursor-pointer"
+                                                    className="p-1.5 bg-[#fdf2f4] hover:bg-[#f3e8ea] text-[#94344c] border border-[#ebd7da] rounded-lg transition-all cursor-pointer flex items-center justify-center"
                                                     title="Modificar item"
                                                 >
                                                     <Edit2 className="h-3.5 w-3.5" />
@@ -425,7 +436,7 @@ export default function Inventory({ inventories, products }: InventoryProps) {
                                                 {/* Botón Eliminar */}
                                                 <button
                                                     onClick={() => openDeleteModal(item)}
-                                                    className="p-1.5 bg-[#290a0f] hover:bg-red-950/40 text-red-400 border border-red-900/30 hover:border-red-900/50 rounded-lg transition-all cursor-pointer"
+                                                    className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg transition-all cursor-pointer flex items-center justify-center"
                                                     title="Eliminar item"
                                                     disabled={item.status === 'rented'}
                                                 >
@@ -437,7 +448,7 @@ export default function Inventory({ inventories, products }: InventoryProps) {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-10 text-center text-[#d2a9b1]">
+                                    <td colSpan={5} className="px-6 py-10 text-center text-[#571e26]/75">
                                         No se encontraron ejemplares físicos con los filtros seleccionados.
                                     </td>
                                 </tr>
@@ -445,6 +456,12 @@ export default function Inventory({ inventories, products }: InventoryProps) {
                         </tbody>
                     </table>
                 </div>
+                <Pagination 
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    theme="light"
+                />
             </div>
 
             {/* CREATE MODAL */}

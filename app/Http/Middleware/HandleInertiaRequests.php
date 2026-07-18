@@ -44,6 +44,83 @@ class HandleInertiaRequests extends Middleware
                 ]) : null,
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'adminNotifications' => function() use ($request) {
+                $user = $request->user();
+                if (!$user || $user->role !== 'admin') {
+                    return [];
+                }
+
+                $notifications = [];
+                $id = 1;
+
+                // 1. Overdue reservations
+                $overdue = \App\Models\Reservation::with('user')
+                    ->whereIn('status', ['en_uso', 'entregada'])
+                    ->where('end_date', '<', \Carbon\Carbon::today())
+                    ->take(3)
+                    ->get();
+                foreach ($overdue as $res) {
+                    $notifications[] = [
+                        'id' => $id++,
+                        'title' => 'Reserva Atrasada',
+                        'desc' => "El pedido #{$res->order_number} de " . ($res->user ? $res->user->name : 'un estudiante') . " está vencido.",
+                        'time' => \Carbon\Carbon::parse($res->end_date)->diffForHumans(),
+                        'read' => false,
+                        'link' => '/admin/reservas'
+                    ];
+                }
+
+                // 2. Low stock products (stock < 2)
+                $lowStock = \App\Models\Product::whereHas('inventories', function ($q) {
+                    $q->where('status', 'available');
+                }, '<', 2)->take(3)->get();
+                foreach ($lowStock as $prod) {
+                    $notifications[] = [
+                        'id' => $id++,
+                        'title' => 'Stock Bajo',
+                        'desc' => "Queda menos de 2 unidades de {$prod->name}.",
+                        'time' => 'Ahora',
+                        'read' => false,
+                        'link' => '/admin/inventario'
+                    ];
+                }
+
+                // 3. Recent payments (updated_at inside the last week)
+                $recentPayments = \App\Models\Reservation::where('payment_status', 'pagado')
+                    ->where('updated_at', '>=', \Carbon\Carbon::now()->subWeek())
+                    ->orderBy('updated_at', 'desc')
+                    ->take(3)
+                    ->get();
+                foreach ($recentPayments as $res) {
+                    $notifications[] = [
+                        'id' => $id++,
+                        'title' => 'Pago Registrado',
+                        'desc' => "Reserva #{$res->order_number} pagada correctamente (S/ " . number_format($res->total_amount, 2) . ").",
+                        'time' => \Carbon\Carbon::parse($res->updated_at)->diffForHumans(),
+                        'read' => true,
+                        'link' => '/admin/pagos'
+                    ];
+                }
+
+                // 4. New users (last 3 days)
+                $newUsers = \App\Models\User::where('created_at', '>=', \Carbon\Carbon::now()->subDays(3))
+                    ->where('id', '!=', $user->id)
+                    ->orderBy('created_at', 'desc')
+                    ->take(3)
+                    ->get();
+                foreach ($newUsers as $u) {
+                    $notifications[] = [
+                        'id' => $id++,
+                        'title' => 'Nuevo Estudiante',
+                        'desc' => "{$u->name} se ha registrado en el sistema.",
+                        'time' => \Carbon\Carbon::parse($u->created_at)->diffForHumans(),
+                        'read' => true,
+                        'link' => '/admin/usuarios'
+                    ];
+                }
+
+                return $notifications;
+            }
         ];
     }
 }

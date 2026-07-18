@@ -21,6 +21,7 @@ import {
     Save
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import Pagination from '@/components/Pagination';
 
 interface UserInfo {
     name: string;
@@ -67,10 +68,17 @@ export default function Reservations({ reservations }: ReservationsProps) {
     const [newStatus, setNewStatus] = useState<string>('');
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-    // Filters
+    // Filters & Pagination
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [timeFilter, setTimeFilter] = useState('all'); // all, today_deliveries, today_returns, overdue
+
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, statusFilter, timeFilter]);
 
     const showToast = (message: string, type: 'success' | 'error' = 'success') => {
         setToast({ message, type });
@@ -150,10 +158,13 @@ export default function Reservations({ reservations }: ReservationsProps) {
         return matchesSearch && matchesStatus && matchesTime;
     });
 
+    const totalPages = Math.ceil(filteredReservations.length / itemsPerPage);
+    const currentReservations = filteredReservations.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
     const getStatusBadge = (res: Reservation) => {
         if (isOverdue(res)) {
             return (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-950/90 text-red-400 border border-red-900/40 animate-pulse">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200 animate-pulse">
                     <AlertTriangle className="h-3.5 w-3.5" />
                     Atrasada (Vencida)
                 </span>
@@ -163,63 +174,62 @@ export default function Reservations({ reservations }: ReservationsProps) {
         switch (res.status) {
             case 'pendiente':
                 return (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-950/80 text-amber-400 border border-amber-900/30">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
                         <Clock className="h-3 w-3" />
                         Pendiente
                     </span>
                 );
             case 'confirmada':
                 return (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-sky-950/80 text-sky-400 border border-sky-900/30">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-200">
                         <CheckCircle2 className="h-3 w-3" />
                         Confirmada
                     </span>
                 );
             case 'preparando':
                 return (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-violet-950/80 text-violet-400 border border-violet-900/30">
-                        <span className="h-1.5 w-1.5 rounded-full bg-violet-400 animate-pulse" />
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200 animate-pulse">
+                        <Clock className="h-3 w-3" />
                         Preparando
                     </span>
                 );
             case 'entregada':
                 return (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-950/80 text-emerald-400 border border-emerald-900/30">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                         <Check className="h-3 w-3" />
                         Lista p/ Entrega
                     </span>
                 );
             case 'en_uso':
                 return (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-orange-950/80 text-orange-400 border border-orange-900/30 animate-pulse">
-                        <span className="h-1.5 w-1.5 rounded-full bg-orange-400 animate-ping" />
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-orange-50 text-orange-700 border border-orange-200 animate-pulse">
+                        <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-ping" />
                         En Uso / Alquilada
                     </span>
                 );
             case 'devuelta':
                 return (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-teal-950/80 text-teal-400 border border-teal-900/30">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200">
                         <Check className="h-3 w-3" />
                         Devuelta
                     </span>
                 );
             case 'rechazada':
                 return (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-950/80 text-red-400 border border-red-900/30">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
                         <X className="h-3 w-3" />
                         Rechazada
                     </span>
                 );
             default:
                 return (
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-900 text-gray-400">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-stone-50 text-stone-700 border border-stone-200">
                         {res.status}
                     </span>
                 );
         }
     };
 
-    // Helper helper for CheckCircle2 locally if not imported
     function CheckCircle2(props: React.SVGProps<SVGSVGElement>) {
         return (
             <svg
@@ -274,16 +284,16 @@ export default function Reservations({ reservations }: ReservationsProps) {
             </div>
 
             {/* Bar filters */}
-            <div className="bg-[#1c050a] border border-[#290a0f] p-4 rounded-2xl mb-6 shadow-xl flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="bg-white border border-[#ebd7da] p-4 rounded-2xl mb-6 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
                 {/* Search */}
                 <div className="relative w-full md:max-w-xs">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#d2a9b1]/60" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#571e26]/60" />
                     <input
                         type="text"
                         placeholder="Buscar por orden, alumno..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-[#290a0f]/40 border border-[#ffb6c5]/15 rounded-xl pl-9 pr-4 py-2 text-sm text-[#fdeaea] placeholder-[#d2a9b1]/35 focus:outline-none focus:border-[#94344c] focus:ring-1 focus:ring-[#94344c]/20 transition-all"
+                        className="w-full bg-[#fdf9fa] border border-[#ebd7da] rounded-xl pl-9 pr-4 py-2 text-sm text-[#1a050a] placeholder-[#571e26]/35 focus:outline-none focus:border-[#94344c] focus:ring-1 focus:ring-[#94344c]/20 transition-all"
                     />
                 </div>
 
@@ -291,11 +301,11 @@ export default function Reservations({ reservations }: ReservationsProps) {
                 <div className="flex flex-wrap gap-3 w-full md:w-auto">
                     {/* Status filter */}
                     <div className="relative min-w-[150px]">
-                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#d2a9b1]/50" />
+                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#571e26]/50" />
                         <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="w-full bg-[#290a0f]/40 border border-[#ffb6c5]/15 rounded-xl pl-9 pr-8 py-2 text-xs text-[#fdeaea] focus:outline-none focus:border-[#94344c] transition-all appearance-none cursor-pointer"
+                            className="w-full bg-[#fdf9fa] border border-[#ebd7da] rounded-xl pl-9 pr-8 py-2 text-xs text-[#571e26] focus:outline-none focus:border-[#94344c] transition-all appearance-none cursor-pointer"
                         >
                             <option value="all">Todos los Estados</option>
                             <option value="pendiente">Pendiente</option>
@@ -306,33 +316,33 @@ export default function Reservations({ reservations }: ReservationsProps) {
                             <option value="devuelta">Devuelta</option>
                             <option value="rechazada">Rechazada</option>
                         </select>
-                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#d2a9b1]/50 pointer-events-none" />
+                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#571e26]/50 pointer-events-none" />
                     </div>
 
                     {/* Time Filter */}
                     <div className="relative min-w-[170px]">
-                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#d2a9b1]/50" />
+                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#571e26]/50" />
                         <select
                             value={timeFilter}
                             onChange={(e) => setTimeFilter(e.target.value)}
-                            className="w-full bg-[#290a0f]/40 border border-[#ffb6c5]/15 rounded-xl pl-9 pr-8 py-2 text-xs text-[#fdeaea] focus:outline-none focus:border-[#94344c] transition-all appearance-none cursor-pointer"
+                            className="w-full bg-[#fdf9fa] border border-[#ebd7da] rounded-xl pl-9 pr-8 py-2 text-xs text-[#571e26] focus:outline-none focus:border-[#94344c] transition-all appearance-none cursor-pointer"
                         >
                             <option value="all">Cualquier Fecha</option>
                             <option value="today_deliveries">Entregas para Hoy</option>
                             <option value="today_returns">Devoluciones de Hoy</option>
                             <option value="overdue">Atrasadas (Vencidas)</option>
                         </select>
-                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#d2a9b1]/50 pointer-events-none" />
+                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#571e26]/50 pointer-events-none" />
                     </div>
                 </div>
             </div>
 
             {/* Table */}
-            <div className="bg-[#1c050a] border border-[#290a0f] rounded-2xl overflow-hidden shadow-xl">
+            <div className="bg-white border border-[#ebd7da] rounded-2xl overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className="border-b border-[#290a0f] text-[#d2a9b1] text-xs uppercase tracking-wider">
+                            <tr className="border-b border-[#ebd7da] text-[#571e26] bg-[#fcf8f9] text-xs uppercase tracking-wider">
                                 <th className="px-6 py-4 font-semibold">Código Orden</th>
                                 <th className="px-6 py-4 font-semibold">Estudiante / Alumno</th>
                                 <th className="px-6 py-4 font-semibold">Fechas del Alquiler</th>
@@ -341,37 +351,37 @@ export default function Reservations({ reservations }: ReservationsProps) {
                                 <th className="px-6 py-4 font-semibold text-center">Acciones Rápidas</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-[#290a0f] text-sm">
+                        <tbody className="divide-y divide-[#f3e8ea] text-sm text-[#290a0f]">
                             {filteredReservations.length > 0 ? (
-                                filteredReservations.map((res) => (
-                                    <tr key={res.id} className={`hover:bg-[#290a0f]/20 transition-colors ${isOverdue(res) ? 'bg-red-950/10' : ''}`}>
+                                currentReservations.map((res) => (
+                                    <tr key={res.id} className={`hover:bg-[#fdf9fa] transition-colors ${isOverdue(res) ? 'bg-red-50/30' : ''}`}>
                                         {/* Order number */}
-                                        <td className="px-6 py-4 font-mono font-bold text-[#ffb6c5] tracking-wider">
+                                        <td className="px-6 py-4 font-mono font-bold text-[#94344c] tracking-wider">
                                             {res.order_number}
                                         </td>
 
                                         {/* Student details */}
                                         <td className="px-6 py-4">
-                                            <div className="font-semibold text-[#fdeaea] flex items-center gap-1.5">
+                                            <div className="font-semibold text-[#1a050a] flex items-center gap-1.5">
                                                 <span>{res.user?.name || 'Estudiante Desconocido'}</span>
                                             </div>
-                                            <div className="text-xs text-[#d2a9b1]/75">{res.user?.email || '-'}</div>
+                                            <div className="text-xs text-[#571e26]/75">{res.user?.email || '-'}</div>
                                         </td>
 
                                         {/* Dates */}
-                                        <td className="px-6 py-4 text-xs space-y-0.5 text-[#d2a9b1]">
+                                        <td className="px-6 py-4 text-xs space-y-0.5 text-[#571e26]">
                                             <div className="flex items-center gap-1">
-                                                <span className="text-[#d2a9b1]/60 font-medium">Inicio:</span>
-                                                <span className="font-semibold text-white">{formatDate(res.start_date)}</span>
+                                                <span className="text-[#571e26]/60 font-medium">Inicio:</span>
+                                                <span className="font-semibold text-[#1a050a]">{formatDate(res.start_date)}</span>
                                             </div>
                                             <div className="flex items-center gap-1">
-                                                <span className="text-[#d2a9b1]/60 font-medium">Devolver:</span>
-                                                <span className={`font-semibold ${isOverdue(res) ? 'text-red-400 font-bold' : 'text-white'}`}>{formatDate(res.end_date)}</span>
+                                                <span className="text-[#571e26]/60 font-medium">Devolver:</span>
+                                                <span className={`font-semibold ${isOverdue(res) ? 'text-red-600 font-bold' : 'text-[#1a050a]'}`}>{formatDate(res.end_date)}</span>
                                             </div>
                                         </td>
 
                                         {/* Total Amount */}
-                                        <td className="px-6 py-4 text-right font-extrabold text-[#fdeaea]">
+                                        <td className="px-6 py-4 text-right font-extrabold text-[#1a050a]">
                                             S/ {Number(res.total_amount).toFixed(2)}
                                         </td>
 
@@ -388,7 +398,7 @@ export default function Reservations({ reservations }: ReservationsProps) {
                                                     <>
                                                         <button
                                                             onClick={() => handleStatusUpdateDirect(res, 'confirmada')}
-                                                            className="inline-flex items-center gap-1 text-[11px] bg-sky-950/40 hover:bg-sky-950 text-sky-400 border border-sky-900/30 py-1.5 px-2.5 rounded-lg transition-all font-semibold cursor-pointer"
+                                                            className="inline-flex items-center gap-1 text-[11px] bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 py-1.5 px-2.5 rounded-lg transition-all font-semibold cursor-pointer"
                                                             title="Confirmar Reserva"
                                                         >
                                                             <Check className="h-3 w-3" />
@@ -396,7 +406,7 @@ export default function Reservations({ reservations }: ReservationsProps) {
                                                         </button>
                                                         <button
                                                             onClick={() => handleStatusUpdateDirect(res, 'rechazada')}
-                                                            className="inline-flex items-center gap-1 text-[11px] bg-red-950/40 hover:bg-red-950 text-red-400 border border-red-900/30 py-1.5 px-2.5 rounded-lg transition-all font-semibold cursor-pointer"
+                                                            className="inline-flex items-center gap-1 text-[11px] bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 py-1.5 px-2.5 rounded-lg transition-all font-semibold cursor-pointer"
                                                             title="Rechazar Reserva"
                                                         >
                                                             <X className="h-3 w-3" />
@@ -408,7 +418,7 @@ export default function Reservations({ reservations }: ReservationsProps) {
                                                 {res.status === 'confirmada' && (
                                                     <button
                                                         onClick={() => handleStatusUpdateDirect(res, 'preparando')}
-                                                        className="inline-flex items-center gap-1 text-[11px] bg-violet-950/40 hover:bg-violet-950 text-violet-400 border border-violet-900/30 py-1.5 px-3 rounded-lg transition-all font-semibold cursor-pointer"
+                                                        className="inline-flex items-center gap-1 text-[11px] bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 py-1.5 px-3 rounded-lg transition-all font-semibold cursor-pointer"
                                                         title="Comenzar preparación"
                                                     >
                                                         <Clock className="h-3 w-3" />
@@ -419,7 +429,7 @@ export default function Reservations({ reservations }: ReservationsProps) {
                                                 {res.status === 'preparando' && (
                                                     <button
                                                         onClick={() => handleStatusUpdateDirect(res, 'entregada')}
-                                                        className="inline-flex items-center gap-1 text-[11px] bg-emerald-950/40 hover:bg-emerald-950 text-emerald-400 border border-emerald-900/30 py-1.5 px-3 rounded-lg transition-all font-semibold cursor-pointer animate-pulse"
+                                                        className="inline-flex items-center gap-1 text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 py-1.5 px-3 rounded-lg transition-all font-semibold cursor-pointer animate-pulse"
                                                         title="Prendas listas en el vestuario"
                                                     >
                                                         <Check className="h-3 w-3" />
@@ -430,7 +440,7 @@ export default function Reservations({ reservations }: ReservationsProps) {
                                                 {res.status === 'entregada' && (
                                                     <button
                                                         onClick={() => handleStatusUpdateDirect(res, 'en_uso')}
-                                                        className="inline-flex items-center gap-1 text-[11px] bg-orange-950/40 hover:bg-orange-950 text-orange-400 border border-orange-900/30 py-1.5 px-3 rounded-lg transition-all font-semibold cursor-pointer"
+                                                        className="inline-flex items-center gap-1 text-[11px] bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 py-1.5 px-3 rounded-lg transition-all font-semibold cursor-pointer"
                                                         title="Entregar vestuario físico"
                                                     >
                                                         <Shirt className="h-3 w-3" />
@@ -441,7 +451,7 @@ export default function Reservations({ reservations }: ReservationsProps) {
                                                 {res.status === 'en_uso' && (
                                                     <button
                                                         onClick={() => handleStatusUpdateDirect(res, 'devuelta')}
-                                                        className="inline-flex items-center gap-1 text-[11px] bg-teal-950/40 hover:bg-teal-950 text-teal-400 border border-teal-900/30 py-1.5 px-3 rounded-lg transition-all font-semibold cursor-pointer"
+                                                        className="inline-flex items-center gap-1 text-[11px] bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 py-1.5 px-3 rounded-lg transition-all font-semibold cursor-pointer"
                                                         title="Recibir devolución y enviar prendas a lavandería"
                                                     >
                                                         <Check className="h-3 w-3" />
@@ -452,7 +462,7 @@ export default function Reservations({ reservations }: ReservationsProps) {
                                                 {/* Detalle / Gestionar Completo */}
                                                 <button
                                                     onClick={() => handleManage(res)}
-                                                    className="p-1.5 bg-[#290a0f] hover:bg-[#571e26] text-[#ffb6c5] border border-[#ffb6c5]/10 rounded-lg transition-all cursor-pointer"
+                                                    className="text-xs bg-[#fdf2f4] hover:bg-[#f3e8ea] text-[#94344c] border border-[#ebd7da] p-1.5 rounded-lg font-semibold transition-all cursor-pointer flex items-center justify-center"
                                                     title="Gestionar detalles"
                                                 >
                                                     <Eye className="h-3.5 w-3.5" />
@@ -463,7 +473,7 @@ export default function Reservations({ reservations }: ReservationsProps) {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={6} className="px-6 py-10 text-center text-[#d2a9b1]">
+                                    <td colSpan={6} className="px-6 py-10 text-center text-[#571e26]/70">
                                         No se encontraron reservas con los criterios de búsqueda.
                                     </td>
                                 </tr>
@@ -471,6 +481,12 @@ export default function Reservations({ reservations }: ReservationsProps) {
                         </tbody>
                     </table>
                 </div>
+                <Pagination 
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    theme="light"
+                />
             </div>
 
             {/* Manage Reservation Dialog */}

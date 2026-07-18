@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, usePage } from '@inertiajs/react';
+import { Link, usePage, router } from '@inertiajs/react';
 import { 
     LayoutGrid, 
     Shirt, 
@@ -50,16 +50,31 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ href, icon: Icon, title, acti
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const { url, props } = usePage();
     const user = props.auth?.user;
+    const adminNotifications = (props as any).adminNotifications || [];
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
-    const [notifications, setNotifications] = useState([
-        { id: 1, title: 'Reserva Atrasada', desc: 'El pedido ALQ-2024-0128 de Juan Pérez está vencido.', time: 'Hace 1h', read: false, link: '/admin/reservas' },
-        { id: 2, title: 'Stock Bajo', desc: 'Queda menos de 2 unidades de Terno Slim Fit Negro.', time: 'Hace 3h', read: false, link: '/admin/inventario' },
-        { id: 3, title: 'Pago Registrado', desc: 'Reserva #0131 pagada correctamente (S/ 320.00).', time: 'Hace 5h', read: true, link: '/admin/pagos' },
-        { id: 4, title: 'Nuevo Estudiante', desc: 'María Torres se ha registrado en el sistema.', time: 'Hace 1 día', read: true, link: '/admin/usuarios' }
-    ]);
+    const [notifications, setNotifications] = useState<any[]>(adminNotifications);
+
+    // Sincronizar las notificaciones cuando los props cambien
+    React.useEffect(() => {
+        if ((props as any).adminNotifications) {
+            setNotifications((props as any).adminNotifications);
+        }
+    }, [(props as any).adminNotifications]);
+
+    // Sincronización automática de datos en segundo plano (cada 15 segundos)
+    React.useEffect(() => {
+        const interval = setInterval(() => {
+            router.reload({
+                preserveScroll: true,
+                preserveState: true
+            } as any);
+        }, 15000);
+
+        return () => clearInterval(interval);
+    }, []);
 
     const unreadCount = notifications.filter(n => !n.read).length;
 
