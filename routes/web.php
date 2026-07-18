@@ -42,9 +42,13 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->group(functio
     Route::delete('/inventario/{inventory}', [AdminController::class, 'deleteInventory'])->name('admin.inventory.delete');
     Route::get('/reservas', [AdminController::class, 'reservations'])->name('admin.reservations');
     Route::put('/reservas/{reservation}/status', [AdminController::class, 'updateReservationStatus'])->name('admin.reservations.update-status');
+    Route::get('/pagos', [AdminController::class, 'payments'])->name('admin.payments');
+    Route::patch('/pagos/{reservation}/registrar', [AdminController::class, 'registerPayment'])->name('admin.payments.register');
+    Route::patch('/pagos/{reservation}/devolver-garantia', [AdminController::class, 'refundGuarantee'])->name('admin.payments.refund');
     Route::get('/usuarios', [AdminController::class, 'users'])->name('admin.users');
     Route::get('/reportes', [AdminController::class, 'reports'])->name('admin.reports');
     Route::get('/configuracion', [AdminController::class, 'settings'])->name('admin.settings');
+    Route::post('/configuracion', [AdminController::class, 'updateSettings'])->name('admin.settings.update');
     Route::get('/perfil', function () {
         return Inertia::render('admin/Profile');
     })->name('admin.profile');

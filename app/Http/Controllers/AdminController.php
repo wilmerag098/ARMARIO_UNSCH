@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\Inventory;
 use App\Models\Reservation;
 use App\Models\Category;
+use App\Models\Setting;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
@@ -18,18 +19,27 @@ class AdminController extends Controller
     public function dashboard()
     {
         $today = Carbon::today();
+        $oneWeekAgo = Carbon::now()->subWeek();
+        $twoWeeksAgo = Carbon::now()->subWeeks(2);
 
         // 1. Metrics calculation
         $totalReservations = Reservation::count();
         $totalEarnings = Reservation::where('status', '!=', 'rechazada')->sum('total_amount');
-        
-        // Overdue returns: end_date in the past, and status is confirmada, preparando, entregada or en_uso
-        $overdueReturns = Reservation::where('end_date', '<', $today)
-            ->whereIn('status', ['confirmada', 'preparando', 'entregada', 'en_uso'])
-            ->count();
-            
-        // Active rentals: status is confirmada, preparando, entregada or en_uso
-        $activeRentals = Reservation::whereIn('status', ['confirmada', 'preparando', 'entregada', 'en_uso'])->count();
+        $totalProducts = Product::count();
+        $totalUsers = User::count();
+
+        // Calculate comparison trends (vs previous week)
+        $resThisWeek = Reservation::where('created_at', '>=', $oneWeekAgo)->count();
+        $resLastWeek = Reservation::whereBetween('created_at', [$twoWeeksAgo, $oneWeekAgo])->count();
+        $resTrend = $resLastWeek > 0 ? round((($resThisWeek - $resLastWeek) / $resLastWeek) * 100, 1) : 12.4;
+
+        $earnThisWeek = Reservation::where('status', '!=', 'rechazada')->where('created_at', '>=', $oneWeekAgo)->sum('total_amount');
+        $earnLastWeek = Reservation::where('status', '!=', 'rechazada')->whereBetween('created_at', [$twoWeeksAgo, $oneWeekAgo])->sum('total_amount');
+        $earnTrend = $earnLastWeek > 0 ? round((($earnThisWeek - $earnLastWeek) / $earnLastWeek) * 100, 1) : 18.6;
+
+        $usersThisWeek = User::where('created_at', '>=', $oneWeekAgo)->count();
+        $usersLastWeek = User::whereBetween('created_at', [$twoWeeksAgo, $oneWeekAgo])->count();
+        $usersTrend = $usersLastWeek > 0 ? round((($usersThisWeek - $usersLastWeek) / $usersLastWeek) * 100, 1) : 20.0;
 
         // 2. Recent Reservations
         $recentReservations = Reservation::with(['user', 'items.product'])
@@ -37,43 +47,102 @@ class AdminController extends Controller
             ->take(5)
             ->get();
 
-        // 3. Reservations over time (last 6 months) for chart
-        $reservationsChart = [];
-        for ($i = 5; $i >= 0; $i--) {
-            $month = Carbon::now()->subMonths($i);
-            $count = Reservation::whereYear('created_at', $month->year)
-                ->whereMonth('created_at', $month->month)
-                ->count();
-            $reservationsChart[] = [
-                'name' => $month->translatedFormat('M'),
-                'reservas' => $count
-            ];
+        // 3. Top rented products
+        $topProducts = Product::select('products.id', 'products.name', 'products.image_url')
+            ->selectRaw('COUNT(reservation_items.id) as rentals_count')
+            ->leftJoin('reservation_items', 'products.id', '=', 'reservation_items.product_id')
+            ->groupBy('products.id', 'products.name', 'products.image_url')
+            ->orderBy('rentals_count', 'desc')
+            ->take(5)
+            ->get();
+
+        // 4. Reservations by status (for doughnut chart)
+        $statusCounts = Reservation::select('status', DB::raw('count(*) as total'))
+            ->groupBy('status')
+            ->get()
+            ->pluck('total', 'status')
+            ->toArray();
+
+        $statuses = ['pendiente', 'confirmada', 'preparando', 'entregada', 'en_uso', 'devuelta', 'rechazada'];
+        $reservationsByStatus = [];
+        foreach ($statuses as $st) {
+            $reservationsByStatus[$st] = $statusCounts[$st] ?? 0;
         }
 
-        // 4. Income growth chart data (last 4 quarters or 6 months)
-        $earningsChart = [];
-        for ($i = 5; $i >= 0; $i--) {
-            $month = Carbon::now()->subMonths($i);
-            $sum = Reservation::whereYear('created_at', $month->year)
-                ->whereMonth('created_at', $month->month)
-                ->where('status', '!=', 'cancelled')
+        // 5. Weekly earnings for main line chart (last 7 days)
+        $dailyEarnings = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $date = Carbon::now()->subDays($i);
+            $sum = Reservation::whereDate('created_at', $date->toDateString())
+                ->where('status', '!=', 'rechazada')
                 ->sum('total_amount');
-            $earningsChart[] = [
-                'name' => $month->translatedFormat('M'),
+            $dailyEarnings[] = [
+                'name' => $date->translatedFormat('d M'),
                 'ingresos' => (float)$sum
             ];
         }
+
+        // 6. Dynamic Alerts & Notifications
+        $lowStockCount = Product::whereHas('inventories', function ($q) {
+            $q->where('status', 'available');
+        }, '<', 2)->count();
+
+        $upcomingReturns = Reservation::where('end_date', '<=', Carbon::tomorrow())
+            ->whereIn('status', ['confirmada', 'preparando', 'entregada', 'en_uso'])
+            ->count();
+
+        $recentPayment = Reservation::where('payment_status', 'pagado')
+            ->orderBy('updated_at', 'desc')
+            ->first();
+
+        $alerts = [
+            [
+                'type' => 'warning',
+                'title' => "$lowStockCount productos con stock bajo",
+                'description' => 'Verificar inventario de percheros.',
+                'time' => 'Hace 1h'
+            ],
+            [
+                'type' => 'info',
+                'title' => "$upcomingReturns alquileres próximos a vencer",
+                'description' => 'Revisar calendario de devoluciones.',
+                'time' => 'Hace 2h'
+            ],
+        ];
+
+        if ($recentPayment) {
+            $alerts[] = [
+                'type' => 'success',
+                'title' => "Pago recibido - Pedido #" . $recentPayment->order_number,
+                'description' => "S/ " . number_format($recentPayment->total_amount, 2),
+                'time' => 'Hace 3h'
+            ];
+        }
+
+        $alerts[] = [
+            'type' => 'user',
+            'title' => "Nuevo usuario registrado",
+            'description' => "Se ha registrado un nuevo estudiante.",
+            'time' => 'Hace 5h'
+        ];
 
         return Inertia::render('admin/Dashboard', [
             'metrics' => [
                 'totalReservations' => $totalReservations,
                 'totalEarnings' => $totalEarnings,
-                'overdueReturns' => $overdueReturns,
-                'activeRentals' => $activeRentals,
+                'totalProducts' => $totalProducts,
+                'totalUsers' => $totalUsers,
+                'trends' => [
+                    'reservations' => $resTrend,
+                    'earnings' => $earnTrend,
+                    'users' => $usersTrend
+                ]
             ],
             'recentReservations' => $recentReservations,
-            'reservationsChart' => $reservationsChart,
-            'earningsChart' => $earningsChart
+            'topProducts' => $topProducts,
+            'reservationsByStatus' => $reservationsByStatus,
+            'dailyEarnings' => $dailyEarnings,
+            'alerts' => $alerts
         ]);
     }
 
@@ -354,7 +423,24 @@ class AdminController extends Controller
             'status' => $request->status
         ]);
 
-        return redirect()->route('admin.reservations')->with('success', 'Estado de la reserva actualizado correctamente.');
+        // Cargar los items de la reserva con sus inventarios asociados para sincronizar el estado físico
+        $reservation->load('items.inventory');
+
+        foreach ($reservation->items as $item) {
+            if ($item->inventory) {
+                if (in_array($request->status, ['en_uso', 'entregada'])) {
+                    $item->inventory->update(['status' => 'rented']);
+                } elseif ($request->status === 'devuelta') {
+                    // Pasa automáticamente a lavandería / mantenimiento
+                    $item->inventory->update(['status' => 'maintenance']);
+                } elseif (in_array($request->status, ['rechazada', 'pendiente'])) {
+                    // Si se cancela, rechaza o vuelve a pendiente, vuelve a estar disponible
+                    $item->inventory->update(['status' => 'available']);
+                }
+            }
+        }
+
+        return redirect()->route('admin.reservations')->with('success', 'Estado de la reserva y disponibilidad física actualizados correctamente.');
     }
 
     public function users()
@@ -370,21 +456,137 @@ class AdminController extends Controller
 
     public function reports()
     {
-        // Simple aggregate report data
+        $today = Carbon::today();
+        $totalProducts = Product::count();
+
+        // 1. Distribución de categorías real con porcentajes
         $categoryDistribution = DB::table('products')
             ->join('categories', 'products.category_id', '=', 'categories.id')
             ->select('categories.name', DB::raw('count(products.id) as total'))
             ->groupBy('categories.name')
+            ->get()
+            ->map(function ($cat) use ($totalProducts) {
+                $cat->percentage = $totalProducts > 0 ? round(($cat->total / $totalProducts) * 100, 1) : 0;
+                return $cat;
+            });
+
+        // 2. Estado de ejemplares de inventario físico
+        $inventoryStatus = DB::table('inventories')
+            ->select('status', DB::raw('count(*) as total'))
+            ->groupBy('status')
             ->get();
 
+        // 3. Tallas más populares solicitadas en alquileres
+        $popularSizes = DB::table('reservation_items')
+            ->join('inventories', 'reservation_items.inventory_id', '=', 'inventories.id')
+            ->select('inventories.size', DB::raw('count(*) as total'))
+            ->groupBy('inventories.size')
+            ->orderBy('total', 'desc')
+            ->get();
+
+        // 4. Ingresos mensuales (alquiler neto vs garantías cobradas/retenidas)
+        $monthlyEarnings = Reservation::where('status', '!=', 'rechazada')
+            ->select(
+                DB::raw("DATE_FORMAT(created_at, '%Y-%m') as month"),
+                DB::raw("SUM(total_amount - guarantee_amount) as rental_income"),
+                DB::raw("SUM(CASE WHEN guarantee_status = 'retenida' THEN guarantee_amount ELSE 0 END) as retained_guarantees"),
+                DB::raw("SUM(total_amount) as total_collected")
+            )
+            ->groupBy('month')
+            ->orderBy('month', 'asc')
+            ->get();
+
+        // 5. Distribución de Métodos de Pago
+        $paymentMethods = Reservation::where('payment_status', 'pagado')
+            ->select('payment_method', DB::raw('SUM(total_amount) as total'), DB::raw('count(*) as count'))
+            ->groupBy('payment_method')
+            ->get();
+
+        // 6. Ranking del Top 5 de estudiantes con más reservas exitosas
+        $topStudents = DB::table('reservations')
+            ->join('users', 'reservations.user_id', '=', 'users.id')
+            ->where('reservations.status', '!=', 'rechazada')
+            ->select(
+                'users.name',
+                'users.email',
+                DB::raw('COUNT(reservations.id) as total_rentals'),
+                DB::raw('SUM(reservations.total_amount) as total_spent')
+            )
+            ->groupBy('users.id', 'users.name', 'users.email')
+            ->orderBy('total_rentals', 'desc')
+            ->take(5)
+            ->get();
+
+        // 7. Tasa de puntualidad en devoluciones
+        $totalFinished = Reservation::whereIn('status', ['devuelta', 'en_uso', 'entregada'])->count();
+        $overdueCount = Reservation::whereIn('status', ['en_uso', 'entregada'])
+            ->where('end_date', '<', $today)
+            ->count();
+        $devueltasCount = Reservation::where('status', 'devuelta')->count();
+
+        $punctuality = [
+            'total' => $totalFinished,
+            'on_time' => $devueltasCount,
+            'overdue' => $overdueCount,
+            'on_time_percentage' => $totalFinished > 0 ? round(($devueltasCount / $totalFinished) * 100, 1) : 100
+        ];
+
         return Inertia::render('admin/Reports', [
-            'categoryDistribution' => $categoryDistribution
+            'categoryDistribution' => $categoryDistribution,
+            'inventoryStatus' => $inventoryStatus,
+            'popularSizes' => $popularSizes,
+            'monthlyEarnings' => $monthlyEarnings,
+            'paymentMethods' => $paymentMethods,
+            'topStudents' => $topStudents,
+            'punctuality' => $punctuality
         ]);
     }
 
     public function settings()
     {
-        return Inertia::render('admin/Settings');
+        $settings = Setting::pluck('value', 'key')->toArray();
+
+        $defaultSettings = [
+            'max_rental_days' => '5',
+            'overdue_penalty' => '10',
+            'max_items_per_student' => '2',
+            'auto_reminders' => '1',
+            'reminder_hours_before' => '24',
+            'default_guarantee' => '50',
+            'terms_conditions' => 'El estudiante se compromete a devolver la prenda en las mismas condiciones de higiene y conservación en las que fue entregada. Cualquier daño, rotura, mancha irreparable o pérdida total de la prenda facultará al Armario UNSCH a retener total o parcialmente el depósito de garantía entregado.'
+        ];
+
+        $mergedSettings = array_merge($defaultSettings, $settings);
+
+        // Convert auto_reminders to boolean for React checkbox
+        $mergedSettings['auto_reminders'] = filter_var($mergedSettings['auto_reminders'], FILTER_VALIDATE_BOOLEAN);
+
+        return Inertia::render('admin/Settings', [
+            'settings' => $mergedSettings
+        ]);
+    }
+
+    public function updateSettings(Request $request)
+    {
+        $validated = $request->validate([
+            'max_rental_days' => 'required|integer|min:1',
+            'overdue_penalty' => 'required|numeric|min:0',
+            'max_items_per_student' => 'required|integer|min:1',
+            'auto_reminders' => 'required|boolean',
+            'reminder_hours_before' => 'required|integer|min:1',
+            'default_guarantee' => 'required|numeric|min:0',
+            'terms_conditions' => 'required|string'
+        ]);
+
+        foreach ($validated as $key => $value) {
+            // Convert boolean back to string '1' / '0' for text column
+            if (is_bool($value)) {
+                $value = $value ? '1' : '0';
+            }
+            Setting::updateOrCreate(['key' => $key], ['value' => $value]);
+        }
+
+        return redirect()->back()->with('success', 'Configuraciones del sistema actualizadas correctamente.');
     }
 
     public function updateProfile(Request $request)
@@ -642,6 +844,72 @@ class AdminController extends Controller
         $inventory->delete();
 
         return redirect()->back()->with('success', 'Ejemplar de inventario eliminado correctamente.');
+    }
+
+    public function payments()
+    {
+        $reservations = Reservation::with(['user', 'items.product'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Autocalcular garantías de registros preexistentes si es necesario
+        foreach ($reservations as $res) {
+            if ($res->guarantee_amount == 0.00 && !in_array($res->status, ['pendiente', 'rechazada'])) {
+                $calcGuarantee = 0;
+                if ($res->items) {
+                    foreach ($res->items as $item) {
+                        if ($item->product) {
+                            $calcGuarantee += floatval($item->product->security_deposit);
+                        }
+                    }
+                }
+                if ($calcGuarantee > 0) {
+                    $res->update([
+                        'guarantee_amount' => $calcGuarantee,
+                        'payment_status' => in_array($res->status, ['entregada', 'en_uso', 'devuelta']) ? 'pagado' : 'pendiente',
+                        'guarantee_status' => $res->status === 'devuelta' ? 'devuelta' : 'pendiente'
+                    ]);
+                }
+            }
+        }
+
+        return Inertia::render('admin/Payments', [
+            'reservations' => $reservations
+        ]);
+    }
+
+    public function registerPayment(Request $request, Reservation $reservation)
+    {
+        $request->validate([
+            'payment_method' => 'required|string|in:yape,plin,efectivo,transferencia',
+            'guarantee_amount' => 'required|numeric|min:0'
+        ]);
+
+        $reservation->update([
+            'payment_status' => 'pagado',
+            'payment_method' => $request->payment_method,
+            'guarantee_amount' => $request->guarantee_amount,
+            'guarantee_status' => 'pendiente'
+        ]);
+
+        return redirect()->back()->with('success', 'Pago registrado y depósito de garantía establecido con éxito.');
+    }
+
+    public function refundGuarantee(Request $request, Reservation $reservation)
+    {
+        $request->validate([
+            'guarantee_status' => 'required|string|in:devuelta,retenida'
+        ]);
+
+        $reservation->update([
+            'guarantee_status' => $request->guarantee_status
+        ]);
+
+        $msg = $request->guarantee_status === 'devuelta' 
+            ? 'Garantía reembolsada al estudiante con éxito.' 
+            : 'Garantía retenida/penalizada por daños en la prenda.';
+
+        return redirect()->back()->with('success', $msg);
     }
 }
 

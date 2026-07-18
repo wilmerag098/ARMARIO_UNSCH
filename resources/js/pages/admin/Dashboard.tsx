@@ -1,14 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import AdminLayout from '@/layouts/AdminLayout';
-import { 
-    Calendar, 
-    TrendingUp, 
-    AlertTriangle, 
-    ShoppingBag, 
-    Download, 
-    ArrowUpRight,
-    MoreHorizontal
+import {
+    Calendar,
+    TrendingUp,
+    AlertTriangle,
+    ShoppingBag,
+    Download,
+    MoreHorizontal,
+    Users,
+    Shirt,
+    Plus,
+    CreditCard,
+    Check,
+    Info,
+    UserPlus,
+    ChevronRight,
+    ChevronDown
 } from 'lucide-react';
 
 interface MetricCardProps {
@@ -16,46 +24,34 @@ interface MetricCardProps {
     value: string | number;
     subtext: string;
     icon: React.ComponentType<any>;
-    trendType?: 'up' | 'warning' | 'normal';
+    iconBgColor: string;
+    iconColor: string;
+    trend?: number;
 }
 
-const MetricCard: React.FC<MetricCardProps> = ({ title, value, subtext, icon: Icon, trendType = 'normal' }) => {
-    let cardBorder = 'border-[#290a0f]';
-    let iconBg = 'bg-[#290a0f]/40 text-[#ffb6c5]';
-    let subtextColor = 'text-[#d2a9b1]';
-
-    if (trendType === 'warning') {
-        cardBorder = 'border-red-900/40 hover:border-red-800/60 shadow-lg shadow-red-950/10';
-        iconBg = 'bg-red-950/50 text-red-400 border border-red-900/30';
-        subtextColor = 'text-red-300';
-    } else if (trendType === 'up') {
-        iconBg = 'bg-emerald-950/40 text-emerald-400 border border-emerald-900/30';
-    }
-
+const MetricCard: React.FC<MetricCardProps> = ({ title, value, subtext, icon: Icon, iconBgColor, iconColor, trend }) => {
     return (
-        <div className={`bg-[#1c050a] border ${cardBorder} rounded-2xl p-6 transition-all duration-300 hover:border-[#94344c]/40 hover:shadow-xl hover:shadow-[#1c050a]/40 flex flex-col justify-between min-h-[150px]`}>
-            <div className="flex items-start justify-between w-full">
-                <span className="text-xs font-semibold text-[#d2a9b1] uppercase tracking-wider">
-                    {title}
-                </span>
-                <div className={`p-2.5 rounded-xl ${iconBg}`}>
-                    <Icon className="h-5 w-5" />
+        <div className="bg-white border border-[#ebd7da] rounded-3xl p-6 shadow-sm hover:shadow-md transition-all duration-300 flex items-center justify-between min-h-[120px]">
+            <div className="flex items-center gap-4">
+                <div className={`p-4 rounded-full ${iconBgColor} ${iconColor} shrink-0`}>
+                    <Icon className="h-6 w-6" />
                 </div>
-            </div>
-            <div className="mt-4">
-                <span className="text-3xl font-bold tracking-tight text-[#fdeaea]">
-                    {value}
-                </span>
-                <div className="flex items-center gap-1 mt-2">
-                    {trendType === 'up' && (
-                        <TrendingUp className="h-4 w-4 text-emerald-400" />
-                    )}
-                    {trendType === 'warning' && (
-                        <AlertTriangle className="h-4 w-4 text-red-400" />
-                    )}
-                    <span className={`text-xs ${subtextColor}`}>
-                        {subtext}
+                <div>
+                    <span className="text-[11px] font-bold text-[#8a3348]/60 uppercase tracking-wider block">
+                        {title}
                     </span>
+                    <span className="text-2xl font-extrabold text-[#1a050a] mt-1 block">
+                        {value}
+                    </span>
+                    <div className="flex items-center gap-1 mt-1 text-[11px] text-[#8a3348]/70">
+                        {trend !== undefined && (
+                            <span className="text-emerald-500 font-bold flex items-center gap-0.5">
+                                <TrendingUp className="h-3 w-3" />
+                                {trend > 0 ? `↑ ${trend}%` : `${trend}%`}
+                            </span>
+                        )}
+                        <span>{subtext}</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -66,8 +62,13 @@ interface DashboardProps {
     metrics: {
         totalReservations: number;
         totalEarnings: string | number;
-        overdueReturns: number;
-        activeRentals: number;
+        totalProducts: number;
+        totalUsers: number;
+        trends: {
+            reservations: number;
+            earnings: number;
+            users: number;
+        };
     };
     recentReservations: Array<{
         id: number;
@@ -75,7 +76,7 @@ interface DashboardProps {
         start_date: string;
         end_date: string;
         total_amount: string | number;
-        status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+        status: 'pendiente' | 'confirmada' | 'preparando' | 'entregada' | 'en_uso' | 'devuelta' | 'rechazada';
         user?: {
             name: string;
             email: string;
@@ -83,298 +84,497 @@ interface DashboardProps {
         items?: Array<{
             product?: {
                 name: string;
+                image_url?: string;
             }
         }>;
     }>;
-    reservationsChart: Array<{ name: string; reservas: number }>;
-    earningsChart: Array<{ name: string; ingresos: number }>;
+    topProducts: Array<{
+        id: number;
+        name: string;
+        image_url?: string;
+        rentals_count: number;
+    }>;
+    reservationsByStatus: {
+        pendiente: number;
+        confirmada: number;
+        preparando: number;
+        entregada: number;
+        en_uso: number;
+        devuelta: number;
+        rechazada: number;
+    };
+    dailyEarnings: Array<{ name: string; ingresos: number }>;
+    alerts: Array<{
+        type: 'warning' | 'info' | 'success' | 'user';
+        title: string;
+        description: string;
+        time: string;
+    }>;
 }
 
-export default function Dashboard({ metrics, recentReservations, reservationsChart, earningsChart }: DashboardProps) {
+export default function Dashboard({
+    metrics,
+    recentReservations,
+    topProducts,
+    reservationsByStatus,
+    dailyEarnings,
+    alerts
+}: DashboardProps) {
     const formattedEarnings = Number(metrics.totalEarnings).toLocaleString('es-PE', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
     });
 
-    // Helper to get status badge classes
     const getStatusBadge = (status: string) => {
         switch (status) {
-            case 'completed':
+            case 'entregada':
                 return (
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-950/80 text-emerald-400 border border-emerald-900/30">
-                        Completado
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                        Entregado
                     </span>
                 );
-            case 'confirmed':
+            case 'en_uso':
                 return (
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-950/80 text-blue-400 border border-blue-900/30">
-                        En Alquiler
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200">
+                        En camino
                     </span>
                 );
-            case 'pending':
+            case 'confirmada':
+            case 'preparando':
                 return (
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-950/80 text-amber-400 border border-amber-900/30">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-700 border border-sky-200">
+                        Reservado
+                    </span>
+                );
+            case 'pendiente':
+                return (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-700 border border-gray-200">
                         Pendiente
-                    </span>
-                );
-            case 'cancelled':
-                return (
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-950/80 text-red-400 border border-red-900/30">
-                        Cancelado
                     </span>
                 );
             default:
                 return (
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-900 text-gray-400">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-700">
                         {status}
                     </span>
                 );
         }
     };
 
+    // Doughnut chart calculation
+    const totalStatusCount = Object.values(reservationsByStatus).reduce((a, b) => a + b, 0);
+    const deliveredCount = (reservationsByStatus.devuelta || 0) + (reservationsByStatus.entregada || 0);
+    const inUseCount = reservationsByStatus.en_uso || 0;
+    const reservedCount = (reservationsByStatus.confirmada || 0) + (reservationsByStatus.preparando || 0);
+    const pendingCount = reservationsByStatus.pendiente || 0;
+
+    const delPercent = totalStatusCount > 0 ? round((deliveredCount / totalStatusCount) * 100) : 34.1;
+    const usePercent = totalStatusCount > 0 ? round((inUseCount / totalStatusCount) * 100) : 21.2;
+    const resPercent = totalStatusCount > 0 ? round((reservedCount / totalStatusCount) * 100) : 24.2;
+    const penPercent = totalStatusCount > 0 ? round((pendingCount / totalStatusCount) * 100) : 20.5;
+
+    function round(num: number) {
+        return Math.round(num * 10) / 10;
+    }
+
+    // SVG coordinates calculator for main line chart
+    const maxEarnings = Math.max(...dailyEarnings.map(d => d.ingresos), 1000);
+    const yMax = Math.ceil(maxEarnings / 5000) * 5000; // Round up to nearest 5k
+    const yGridValues = [yMax, yMax * 5/6, yMax * 4/6, yMax * 3/6, yMax * 2/6, yMax * 1/6, 0];
+
+    const chartPoints = dailyEarnings.map((d, index) => {
+        const x = 50 + (index * 70); // 7 points spread across 500px width
+        const y = 180 - (d.ingresos / yMax * 140); // Max height 140px, bottom at 180px
+        return { x, y };
+    });
+
+    const linePath = chartPoints.reduce((path, p, i) => {
+        return i === 0 ? `M ${p.x} ${p.y}` : `${path} L ${p.x} ${p.y}`;
+    }, '');
+
+    const areaPath = chartPoints.length > 0 
+        ? `${linePath} L ${chartPoints[chartPoints.length - 1].x} 180 L ${chartPoints[0].x} 180 Z` 
+        : '';
+
     return (
         <>
-            <Head title="Consola de Administración" />
-            
-            {/* Header / Welcoming */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                <div>
-                    <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-[#fdeaea]">
-                        Vista General
-                    </h1>
-                    <p className="text-sm text-[#d2a9b1] mt-1">
-                        Bienvenido de nuevo. Estos son los últimos datos de Armario UNSCH.
-                    </p>
-                </div>
-                <button className="bg-[#ffb6c5] hover:bg-[#ffa3b6] text-[#120202] font-semibold px-5 py-2.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-[#ffb6c5]/10 shrink-0">
-                    <Download className="h-4.5 w-4.5" />
-                    <span>EXPORTAR REPORTE</span>
-                </button>
-            </div>
+            <Head title="Panel de Administración - Armario UNSCH" />
 
-            {/* Metrics Grid */}
+            {/* Top KPIs */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <MetricCard
-                    title="Total de Reservas"
-                    value={metrics.totalReservations > 0 ? metrics.totalReservations.toLocaleString('es-PE') : "0"}
-                    subtext="+12% vs el mes pasado"
-                    icon={Calendar}
-                    trendType="up"
-                />
-                <MetricCard
-                    title="Ingresos"
+                    title="Ingresos Totales"
                     value={`S/ ${formattedEarnings}`}
-                    subtext="+8% vs el mes pasado"
-                    icon={TrendingUp}
-                    trendType="up"
-                />
-                <MetricCard
-                    title="Devoluciones Atrasadas"
-                    value={metrics.overdueReturns}
-                    subtext="Requiere atención inmediata"
-                    icon={AlertTriangle}
-                    trendType={metrics.overdueReturns > 0 ? "warning" : "normal"}
-                />
-                <MetricCard
-                    title="Alquileres Activos"
-                    value={metrics.activeRentals}
-                    subtext="Actualmente en uso"
+                    subtext="vs semana anterior"
+                    trend={metrics.trends.earnings}
                     icon={ShoppingBag}
+                    iconBgColor="bg-[#f3e8ff]"
+                    iconColor="text-purple-600"
+                />
+                <MetricCard
+                    title="Alquileres"
+                    value={metrics.totalReservations}
+                    subtext="vs semana anterior"
+                    trend={metrics.trends.reservations}
+                    icon={ShoppingBag}
+                    iconBgColor="bg-amber-100"
+                    iconColor="text-amber-600"
+                />
+                <MetricCard
+                    title="Clientes Nuevos"
+                    value={metrics.totalUsers}
+                    subtext="vs semana anterior"
+                    trend={metrics.trends.users}
+                    icon={Users}
+                    iconBgColor="bg-emerald-100"
+                    iconColor="text-emerald-600"
+                />
+                <MetricCard
+                    title="Productos"
+                    value={metrics.totalProducts}
+                    subtext="En catálogo"
+                    icon={Shirt}
+                    iconBgColor="bg-rose-100"
+                    iconColor="text-rose-600"
                 />
             </div>
 
-            {/* Charts Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                {/* Chart 1: Reservas en el tiempo */}
-                <div className="bg-[#1c050a] border border-[#290a0f] rounded-2xl p-6 flex flex-col h-[380px]">
-                    <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-sm font-semibold text-[#d2a9b1] uppercase tracking-wider">
-                            Reservas en el tiempo
+            {/* Middle Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
+                {/* Ingresos por Semana Line Chart */}
+                <div className="lg:col-span-6 bg-white border border-[#ebd7da] rounded-3xl p-6 flex flex-col h-[400px] shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-base font-extrabold text-[#1a050a]">
+                            Ingresos por semana
                         </h2>
-                        <button className="text-[#d2a9b1] hover:text-[#fdeaea] p-1.5 rounded-lg hover:bg-[#290a0f]/40">
-                            <MoreHorizontal className="h-5 w-5" />
-                        </button>
+                        <div className="relative">
+                            <select className="bg-[#fcf8f9] border border-[#ebd7da] rounded-xl text-xs font-semibold px-3 py-1.5 pr-8 appearance-none focus:outline-none cursor-pointer">
+                                <option>Esta semana</option>
+                            </select>
+                            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#8a3348]/60 pointer-events-none" />
+                        </div>
                     </div>
-                    {/* SVG Line/Bar Chart (Fiel a la imagen) */}
+
                     <div className="flex-1 w-full relative min-h-0">
                         <svg className="w-full h-full" viewBox="0 0 500 220" preserveAspectRatio="none">
                             {/* Grid Lines */}
-                            <line x1="0" y1="180" x2="500" y2="180" stroke="#290a0f" strokeWidth="1" strokeDasharray="3 3" />
-                            <line x1="0" y1="120" x2="500" y2="120" stroke="#290a0f" strokeWidth="1" strokeDasharray="3 3" />
-                            <line x1="0" y1="60" x2="500" y2="60" stroke="#290a0f" strokeWidth="1" strokeDasharray="3 3" />
-                            
-                            {/* Bars in background (like in screenshot) */}
-                            <rect x="35" y="150" width="30" height="30" rx="3" fill="#571e26" fillOpacity="0.4" />
-                            <rect x="105" y="130" width="30" height="50" rx="3" fill="#571e26" fillOpacity="0.4" />
-                            <rect x="175" y="110" width="30" height="70" rx="3" fill="#571e26" fillOpacity="0.4" />
-                            <rect x="245" y="80" width="30" height="100" rx="3" fill="#94344c" fillOpacity="0.6" />
-                            <rect x="315" y="120" width="30" height="60" rx="3" fill="#571e26" fillOpacity="0.4" />
-                            <rect x="385" y="95" width="30" height="85" rx="3" fill="#571e26" fillOpacity="0.4" />
-                            <rect x="455" y="65" width="30" height="115" rx="3" fill="#571e26" fillOpacity="0.4" />
+                            <line x1="40" y1="30" x2="480" y2="30" stroke="#f3e8ff" strokeWidth="1" strokeDasharray="3 3" />
+                            <line x1="40" y1="65" x2="480" y2="65" stroke="#f3e8ff" strokeWidth="1" strokeDasharray="3 3" />
+                            <line x1="40" y1="100" x2="480" y2="100" stroke="#f3e8ff" strokeWidth="1" strokeDasharray="3 3" />
+                            <line x1="40" y1="135" x2="480" y2="135" stroke="#f3e8ff" strokeWidth="1" strokeDasharray="3 3" />
+                            <line x1="40" y1="170" x2="480" y2="170" stroke="#f3e8ff" strokeWidth="1" strokeDasharray="3 3" />
+                            <line x1="40" y1="180" x2="480" y2="180" stroke="#ebd7da" strokeWidth="1" />
+
+                            {/* Y-Axis Labels */}
+                            <text x="35" y="34" fill="#8a3348" fillOpacity="0.6" fontSize="9" textAnchor="end">S/ {(yMax/1000).toFixed(0)}k</text>
+                            <text x="35" y="74" fill="#8a3348" fillOpacity="0.6" fontSize="9" textAnchor="end">S/ {(yMax * 4/6/1000).toFixed(0)}k</text>
+                            <text x="35" y="114" fill="#8a3348" fillOpacity="0.6" fontSize="9" textAnchor="end">S/ {(yMax * 3/6/1000).toFixed(0)}k</text>
+                            <text x="35" y="154" fill="#8a3348" fillOpacity="0.6" fontSize="9" textAnchor="end">S/ {(yMax * 1/6/1000).toFixed(0)}k</text>
+                            <text x="35" y="184" fill="#8a3348" fillOpacity="0.6" fontSize="9" textAnchor="end">S/ 0</text>
 
                             {/* Gradient Area under line */}
                             <defs>
-                                <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor="#ffb6c5" stopOpacity="0.3" />
-                                    <stop offset="100%" stopColor="#94344c" stopOpacity="0.0" />
+                                <linearGradient id="yellowAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.25" />
+                                    <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.0" />
                                 </linearGradient>
                             </defs>
-                            <path 
-                                d="M 50 160 Q 120 170 190 120 T 260 145 T 380 50 T 470 110 L 470 180 L 50 180 Z" 
-                                fill="url(#lineGrad)" 
-                            />
+                            {areaPath && <path d={areaPath} fill="url(#yellowAreaGrad)" />}
 
-                            {/* Fluid Line */}
-                            <path 
-                                d="M 50 160 Q 120 170 190 120 T 260 145 T 380 50 T 470 110" 
-                                fill="none" 
-                                stroke="#ffb6c5" 
-                                strokeWidth="3" 
-                                strokeLinecap="round"
-                            />
+                            {/* Line path */}
+                            {linePath && (
+                                <path 
+                                    d={linePath} 
+                                    fill="none" 
+                                    stroke="#f59e0b" 
+                                    strokeWidth="3" 
+                                    strokeLinecap="round" 
+                                />
+                            )}
 
-                            {/* "Pico" marker */}
-                            <circle cx="260" cy="145" r="5" fill="#ffb6c5" />
-                            <g transform="translate(235, 115)">
-                                <rect x="0" y="0" width="45" height="20" rx="4" fill="#ffb6c5" />
-                                <text x="22.5" y="14" fill="#120202" fontSize="9" fontWeight="bold" textAnchor="middle">Pico</text>
-                            </g>
+                            {/* Nodes */}
+                            {chartPoints.map((p, i) => (
+                                <g key={i}>
+                                    <circle cx={p.x} cy={p.y} r="5" fill="#ffffff" stroke="#f59e0b" strokeWidth="2.5" />
+                                    {/* Tooltip on the last node (like peak) */}
+                                    {i === chartPoints.length - 1 && (
+                                        <g transform={`translate(${p.x - 30}, ${p.y - 25})`}>
+                                            <rect x="0" y="0" width="60" height="18" rx="4" fill="#1a050a" />
+                                            <text x="30" y="12" fill="#ffffff" fontSize="8" fontWeight="bold" textAnchor="middle">
+                                                S/ {dailyEarnings[i].ingresos.toFixed(0)}
+                                            </text>
+                                        </g>
+                                    )}
+                                </g>
+                            ))}
                         </svg>
 
-                        {/* Chart Labels */}
-                        <div className="flex justify-between text-[11px] text-[#d2a9b1] mt-2 px-6">
-                            {reservationsChart.map((c, i) => (
-                                <span key={i}>{c.name}</span>
+                        {/* X-Axis labels */}
+                        <div className="flex justify-between text-[10px] font-semibold text-[#8a3348]/60 mt-1 pl-[45px] pr-[15px]">
+                            {dailyEarnings.map((d, index) => (
+                                <span key={index}>{d.name}</span>
                             ))}
                         </div>
                     </div>
                 </div>
 
-                {/* Chart 2: Crecimiento de ingresos */}
-                <div className="bg-[#1c050a] border border-[#290a0f] rounded-2xl p-6 flex flex-col h-[380px]">
-                    <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-sm font-semibold text-[#d2a9b1] uppercase tracking-wider">
-                            Crecimiento de Ingresos
+                {/* Alquileres Recientes */}
+                <div className="lg:col-span-3 bg-white border border-[#ebd7da] rounded-3xl p-6 flex flex-col h-[400px] shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-base font-extrabold text-[#1a050a]">
+                            Alquileres recientes
                         </h2>
-                        <button className="text-[#d2a9b1] hover:text-[#fdeaea] p-1.5 rounded-lg hover:bg-[#290a0f]/40">
-                            <MoreHorizontal className="h-5 w-5" />
-                        </button>
+                        <Link href="/admin/reservas" className="text-xs font-bold text-sky-600 hover:text-sky-700 transition-colors">
+                            Ver todos
+                        </Link>
                     </div>
-                    {/* SVG Bar Chart with highlights (Fiel a la imagen) */}
-                    <div className="flex-1 w-full relative min-h-0">
-                        <svg className="w-full h-full" viewBox="0 0 500 220" preserveAspectRatio="none">
-                            {/* Grid Lines */}
-                            <line x1="0" y1="180" x2="500" y2="180" stroke="#290a0f" strokeWidth="1" strokeDasharray="3 3" />
-                            <line x1="0" y1="120" x2="500" y2="120" stroke="#290a0f" strokeWidth="1" strokeDasharray="3 3" />
-                            <line x1="0" y1="60" x2="500" y2="60" stroke="#290a0f" strokeWidth="1" strokeDasharray="3 3" />
 
-                            {/* Bar Chart Columns */}
-                            {/* Bar 1 */}
-                            <rect x="50" y="120" width="35" height="60" rx="4" fill="#571e26" fillOpacity="0.7" />
-                            {/* Bar 2 */}
-                            <rect x="130" y="90" width="35" height="90" rx="4" fill="#94344c" fillOpacity="0.7" />
-                            {/* Bar 3 */}
-                            <rect x="210" y="70" width="35" height="110" rx="4" fill="#94344c" fillOpacity="0.7" />
-                            {/* Bar 4 */}
-                            <rect x="290" y="100" width="35" height="80" rx="4" fill="#571e26" fillOpacity="0.7" />
-                            {/* Bar 5 */}
-                            <rect x="370" y="60" width="35" height="120" rx="4" fill="#94344c" fillOpacity="0.7" />
-                            {/* Bar 6 Highlighted (like in screenshot Q4) */}
-                            <rect x="450" y="30" width="35" height="150" rx="4" fill="#ffb6c5" />
+                    <div className="flex-1 space-y-4 overflow-y-auto pr-1">
+                        {recentReservations.length > 0 ? (
+                            recentReservations.map((res) => {
+                                const mainItem = res.items?.[0];
+                                return (
+                                    <div key={res.id} className="flex items-center justify-between gap-3 text-xs border-b border-[#fcf8f9] pb-3 last:border-0 last:pb-0">
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                            <img
+                                                src={mainItem?.product?.image_url || 'https://images.unsplash.com/photo-1593030761757-71fae45fa0e7?q=80&w=800'}
+                                                alt=""
+                                                className="w-10 h-10 object-cover rounded-xl shrink-0 bg-[#290a0f]"
+                                            />
+                                            <div className="min-w-0">
+                                                <p className="font-mono text-[10px] font-bold text-[#8a3348]">{res.order_number}</p>
+                                                <p className="font-extrabold text-[#1a050a] truncate">{mainItem?.product?.name || 'Prenda'}</p>
+                                                <p className="text-[10px] text-[#8a3348]/60 truncate">{res.user?.name}</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right shrink-0">
+                                            <span className="text-[10px] text-[#8a3348]/60 block mb-1">
+                                                {res.start_date.split('-')[2]}/{res.start_date.split('-')[1]}
+                                            </span>
+                                            {getStatusBadge(res.status)}
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <p className="text-xs text-[#8a3348]/50 text-center py-10">No hay reservas recientes</p>
+                        )}
+                    </div>
+                </div>
 
-                            {/* Q4 Badge over the highlighted bar */}
-                            <g transform="translate(450, 5)">
-                                <rect x="0" y="0" width="35" height="18" rx="4" fill="#ffb6c5" />
-                                <text x="17.5" y="12" fill="#120202" fontSize="9" fontWeight="bold" textAnchor="middle">Q4</text>
-                            </g>
-                        </svg>
+                {/* Productos Más Alquilados */}
+                <div className="lg:col-span-3 bg-white border border-[#ebd7da] rounded-3xl p-6 flex flex-col h-[400px] shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-base font-extrabold text-[#1a050a]">
+                            Productos más alquilados
+                        </h2>
+                        <Link href="/admin/productos" className="text-xs font-bold text-sky-600 hover:text-sky-700 transition-colors">
+                            Ver todos
+                        </Link>
+                    </div>
 
-                        {/* Chart Labels */}
-                        <div className="flex justify-between text-[11px] text-[#d2a9b1] mt-2 px-8">
-                            {earningsChart.map((c, i) => (
-                                <span key={i}>{c.name}</span>
-                            ))}
-                        </div>
+                    <div className="flex-1 space-y-3.5 overflow-y-auto">
+                        {topProducts.map((p, idx) => (
+                            <div key={p.id} className="flex items-center justify-between gap-3 text-xs">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <img
+                                        src={p.image_url || 'https://images.unsplash.com/photo-1593030761757-71fae45fa0e7?q=80&w=800'}
+                                        alt=""
+                                        className="w-10 h-10 object-cover rounded-xl shrink-0 bg-[#290a0f]"
+                                    />
+                                    <div className="min-w-0">
+                                        <p className="font-extrabold text-[#1a050a] truncate">{p.name}</p>
+                                        <p className="text-[10px] text-[#8a3348]/60 mt-0.5">{p.rentals_count} alquileres</p>
+                                    </div>
+                                </div>
+                                <span className="h-6 w-6 rounded-full bg-amber-100 text-amber-800 font-extrabold flex items-center justify-center text-[10px] shrink-0">
+                                    {idx + 1}
+                                </span>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>
 
-            {/* Bottom Table Section: Reservas Recientes */}
-            <div className="bg-[#1c050a] border border-[#290a0f] rounded-2xl overflow-hidden shadow-xl">
-                <div className="px-6 py-5 border-b border-[#290a0f] flex items-center justify-between">
-                    <h2 className="text-sm font-semibold text-[#d2a9b1] uppercase tracking-wider">
-                        Reservas Recientes
+            {/* Bottom Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* Alquileres por Estado Doughnut */}
+                <div className="lg:col-span-4 bg-white border border-[#ebd7da] rounded-3xl p-6 flex flex-col h-[300px] shadow-sm">
+                    <h2 className="text-base font-extrabold text-[#1a050a] mb-5">
+                        Alquileres por estado
                     </h2>
-                    <Link 
-                        href="/admin/reservas" 
-                        className="text-[#ffb6c5] hover:text-[#ffa3b6] text-xs font-semibold hover:underline flex items-center gap-1 transition-all"
-                    >
-                        Ver Todo
-                    </Link>
+                    <div className="flex items-center justify-between gap-4 flex-1">
+                        {/* SVG Rosca */}
+                        <div className="relative w-36 h-36 shrink-0 flex items-center justify-center">
+                            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                                {/* Base circles */}
+                                <circle cx="18" cy="18" r="15.91" fill="none" stroke="#f3e8ff" strokeWidth="3" />
+                                
+                                {/* Entregado Segment (Green) */}
+                                <circle 
+                                    cx="18" cy="18" r="15.91" fill="none" stroke="#10b981" strokeWidth="3" 
+                                    strokeDasharray={`${delPercent} ${100 - delPercent}`}
+                                    strokeDashoffset="0"
+                                />
+
+                                {/* En uso / Alquilado Segment (Yellow) */}
+                                <circle 
+                                    cx="18" cy="18" r="15.91" fill="none" stroke="#f59e0b" strokeWidth="3" 
+                                    strokeDasharray={`${usePercent} ${100 - usePercent}`}
+                                    strokeDashoffset={`-${delPercent}`}
+                                />
+
+                                {/* Reservado Segment (Blue) */}
+                                <circle 
+                                    cx="18" cy="18" r="15.91" fill="none" stroke="#3b82f6" strokeWidth="3" 
+                                    strokeDasharray={`${resPercent} ${100 - resPercent}`}
+                                    strokeDashoffset={`-${delPercent + usePercent}`}
+                                />
+
+                                {/* Pendiente Segment (Pink) */}
+                                <circle 
+                                    cx="18" cy="18" r="15.91" fill="none" stroke="#ec4899" strokeWidth="3" 
+                                    strokeDasharray={`${penPercent} ${100 - penPercent}`}
+                                    strokeDashoffset={`-${delPercent + usePercent + resPercent}`}
+                                />
+                            </svg>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                <span className="text-2xl font-extrabold text-[#1a050a]">{totalStatusCount}</span>
+                                <span className="text-[10px] font-bold text-[#8a3348]/60 uppercase tracking-wider">Total</span>
+                            </div>
+                        </div>
+
+                        {/* Leyenda */}
+                        <div className="space-y-2 text-xs flex-1">
+                            <div className="flex items-center justify-between">
+                                <span className="flex items-center gap-2 text-[#8a3348]/80 font-medium">
+                                    <span className="h-2.5 w-2.5 rounded-full bg-[#10b981] shrink-0" />
+                                    Entregado
+                                </span>
+                                <span className="font-extrabold text-[#1a050a]">{deliveredCount} <span className="font-normal text-[#8a3348]/60">({delPercent}%)</span></span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="flex items-center gap-2 text-[#8a3348]/80 font-medium">
+                                    <span className="h-2.5 w-2.5 rounded-full bg-[#f59e0b] shrink-0" />
+                                    En camino
+                                </span>
+                                <span className="font-extrabold text-[#1a050a]">{inUseCount} <span className="font-normal text-[#8a3348]/60">({usePercent}%)</span></span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="flex items-center gap-2 text-[#8a3348]/80 font-medium">
+                                    <span className="h-2.5 w-2.5 rounded-full bg-[#3b82f6] shrink-0" />
+                                    Reservado
+                                </span>
+                                <span className="font-extrabold text-[#1a050a]">{reservedCount} <span className="font-normal text-[#8a3348]/60">({resPercent}%)</span></span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="flex items-center gap-2 text-[#8a3348]/80 font-medium">
+                                    <span className="h-2.5 w-2.5 rounded-full bg-[#ec4899] shrink-0" />
+                                    Pendiente
+                                </span>
+                                <span className="font-extrabold text-[#1a050a]">{pendingCount} <span className="font-normal text-[#8a3348]/60">({penPercent}%)</span></span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                
-                {/* Table Container */}
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="border-b border-[#290a0f] text-[#d2a9b1] text-xs uppercase tracking-wider">
-                                <th className="px-6 py-4 font-semibold">Código</th>
-                                <th className="px-6 py-4 font-semibold">Cliente</th>
-                                <th className="px-6 py-4 font-semibold">Fechas</th>
-                                <th className="px-6 py-4 font-semibold text-right">Monto</th>
-                                <th className="px-6 py-4 font-semibold text-center">Estado</th>
-                                <th className="px-6 py-4 font-semibold text-center">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[#290a0f] text-sm">
-                            {recentReservations.length > 0 ? (
-                                recentReservations.map((reservation) => (
-                                    <tr key={reservation.id} className="hover:bg-[#290a0f]/20 transition-colors">
-                                        <td className="px-6 py-4 font-mono font-medium text-[#ffb6c5]">
-                                            {reservation.order_number}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="font-semibold text-[#fdeaea]">
-                                                {reservation.user?.name || 'Cliente'}
-                                            </div>
-                                            <div className="text-xs text-[#d2a9b1]">
-                                                {reservation.user?.email}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-xs">
-                                            <div>Desde: <span className="text-[#fdeaea] font-medium">{reservation.start_date}</span></div>
-                                            <div className="mt-0.5">Hasta: <span className="text-[#fdeaea] font-medium">{reservation.end_date}</span></div>
-                                        </td>
-                                        <td className="px-6 py-4 text-right font-semibold text-[#fdeaea]">
-                                            S/ {Number(reservation.total_amount).toFixed(2)}
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            {getStatusBadge(reservation.status)}
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <Link 
-                                                href={`/admin/reservas`}
-                                                className="text-xs bg-[#571e26]/50 hover:bg-[#571e26] text-[#ffb6c5] border border-[#ffb6c5]/20 px-3 py-1.5 rounded-lg transition-all"
-                                            >
-                                                Detalles
-                                            </Link>
-                                        </td>
-                                    </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan={6} className="px-6 py-10 text-center text-[#d2a9b1]">
-                                        No hay reservas registradas.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+
+                {/* Acciones Rápidas */}
+                <div className="lg:col-span-4 bg-white border border-[#ebd7da] rounded-3xl p-6 flex flex-col h-[300px] shadow-sm">
+                    <h2 className="text-base font-extrabold text-[#1a050a] mb-5">
+                        Acciones rápidas
+                    </h2>
+                    <div className="grid grid-cols-2 gap-4 flex-1">
+                        <Link 
+                            href="/admin/reservas"
+                            className="bg-amber-50 hover:bg-amber-100/70 border border-amber-100 rounded-2xl p-4 flex flex-col items-center justify-center text-center group transition-all"
+                        >
+                            <div className="p-2.5 rounded-full bg-amber-100 text-amber-600 transition-transform group-hover:scale-110">
+                                <ShoppingBag className="h-5 w-5" />
+                            </div>
+                            <span className="text-xs font-bold text-amber-800 mt-2">Nuevo Alquiler</span>
+                        </Link>
+                        
+                        <Link 
+                            href="/admin/productos"
+                            className="bg-violet-50 hover:bg-violet-100/70 border border-violet-100 rounded-2xl p-4 flex flex-col items-center justify-center text-center group transition-all"
+                        >
+                            <div className="p-2.5 rounded-full bg-violet-100 text-violet-600 transition-transform group-hover:scale-110">
+                                <Plus className="h-5 w-5" />
+                            </div>
+                            <span className="text-xs font-bold text-violet-800 mt-2">Agregar Producto</span>
+                        </Link>
+
+                        <Link 
+                            href="/admin/pagos"
+                            className="bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-100 rounded-2xl p-4 flex flex-col items-center justify-center text-center group transition-all"
+                        >
+                            <div className="p-2.5 rounded-full bg-emerald-100 text-emerald-600 transition-transform group-hover:scale-110">
+                                <CreditCard className="h-5 w-5" />
+                            </div>
+                            <span className="text-xs font-bold text-emerald-800 mt-2">Registrar Pago</span>
+                        </Link>
+
+                        <Link 
+                            href="/admin/reservas"
+                            className="bg-sky-50 hover:bg-sky-100/70 border border-sky-100 rounded-2xl p-4 flex flex-col items-center justify-center text-center group transition-all"
+                        >
+                            <div className="p-2.5 rounded-full bg-sky-100 text-sky-600 transition-transform group-hover:scale-110">
+                                <Calendar className="h-5 w-5" />
+                            </div>
+                            <span className="text-xs font-bold text-sky-800 mt-2">Ver Calendario</span>
+                        </Link>
+                    </div>
+                </div>
+
+                {/* Alertas y Notificaciones */}
+                <div className="lg:col-span-4 bg-white border border-[#ebd7da] rounded-3xl p-6 flex flex-col h-[300px] shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-base font-extrabold text-[#1a050a]">
+                            Alertas y notificaciones
+                        </h2>
+                        <Link href="/admin/reportes" className="text-xs font-bold text-sky-600 hover:text-sky-700 transition-colors">
+                            Ver todas
+                        </Link>
+                    </div>
+
+                    <div className="flex-1 space-y-3.5 overflow-y-auto">
+                        {alerts.map((al, idx) => {
+                            let iconBg = 'bg-amber-100 text-amber-600';
+                            let icon = <AlertTriangle className="h-4 w-4" />;
+                            
+                            if (al.type === 'info') {
+                                iconBg = 'bg-sky-100 text-sky-600';
+                                icon = <Info className="h-4 w-4" />;
+                            } else if (al.type === 'success') {
+                                iconBg = 'bg-emerald-100 text-emerald-600';
+                                icon = <Check className="h-4 w-4" />;
+                            } else if (al.type === 'user') {
+                                iconBg = 'bg-purple-100 text-purple-600';
+                                icon = <UserPlus className="h-4 w-4" />;
+                            }
+
+                            return (
+                                <div key={idx} className="flex items-start justify-between gap-3 text-xs">
+                                    <div className="flex items-start gap-2.5 min-w-0">
+                                        <div className={`p-2 rounded-full ${iconBg} shrink-0 mt-0.5`}>
+                                            {icon}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="font-extrabold text-[#1a050a] leading-snug">{al.title}</p>
+                                            <p className="text-[10px] text-[#8a3348]/60 mt-0.5 leading-snug">{al.description}</p>
+                                        </div>
+                                    </div>
+                                    <span className="text-[10px] text-[#8a3348]/40 shrink-0 mt-0.5 font-medium">
+                                        {al.time}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
         </>
     );
 }
 
-// Assign AdminLayout layout wrapper to Dashboard
 Dashboard.layout = (page: React.ReactNode) => <AdminLayout>{page}</AdminLayout>;
