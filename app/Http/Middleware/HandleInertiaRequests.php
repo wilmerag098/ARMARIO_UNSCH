@@ -44,6 +44,18 @@ class HandleInertiaRequests extends Middleware
                 ]) : null,
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'globalCategories' => function() {
+                return \App\Models\Category::withCount(['products' => function($query) {
+                    $query->where('status', 'active');
+                }])->orderBy('name')->get()->map(function($cat) {
+                    return [
+                        'id' => $cat->id,
+                        'name' => $cat->name,
+                        'slug' => $cat->slug,
+                        'products_count' => $cat->products_count
+                    ];
+                })->toArray();
+            },
             'adminNotifications' => function() use ($request) {
                 $user = $request->user();
                 if (!$user || $user->role !== 'admin') {

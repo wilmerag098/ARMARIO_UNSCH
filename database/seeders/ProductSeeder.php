@@ -40,6 +40,7 @@ class ProductSeeder extends Seeder
                 ['label' => 'Material de vestuario', 'value' => 'Lana italiana / Poliéster premium'],
                 ['label' => 'Cantidad de bolsillos', 'value' => '3 (2 laterales, 1 de pecho)']
             ],
+            'colors' => ['negro'],
         ]);
         
         $sizes = ['S', 'M', 'L', 'XL'];
@@ -69,6 +70,7 @@ class ProductSeeder extends Seeder
                 ['label' => 'Material de vestuario', 'value' => 'Seda de alta densidad / Gasa'],
                 ['label' => 'Cantidad de bolsillos', 'value' => 'Sin bolsillos']
             ],
+            'colors' => ['azul'],
         ]);
 
         Inventory::create(['product_id' => $product2->id, 'size' => 'XS', 'sku' => 'VN-XS-001', 'status' => 'available']);
@@ -91,6 +93,7 @@ class ProductSeeder extends Seeder
                 ['label' => 'Material de vestuario', 'value' => 'Casimir inglés'],
                 ['label' => 'Cantidad de bolsillos', 'value' => '3 (2 laterales, 1 de pecho)']
             ],
+            'colors' => ['negro'],
         ]);
 
         Inventory::create(['product_id' => $product3->id, 'size' => 'M', 'sku' => 'SC-M-001', 'status' => 'available']);
@@ -113,6 +116,7 @@ class ProductSeeder extends Seeder
                 ['label' => 'Material de vestuario', 'value' => 'Satén premium'],
                 ['label' => 'Cantidad de bolsillos', 'value' => 'Sin bolsillos']
             ],
+            'colors' => ['negro'],
         ]);
 
         Inventory::create(['product_id' => $product4->id, 'size' => 'S', 'sku' => 'TG-S-001', 'status' => 'available']);
@@ -135,7 +139,8 @@ class ProductSeeder extends Seeder
                     ['label' => 'Ancho', 'value' => '6 cm (Slim)'],
                     ['label' => 'Material', 'value' => 'Satén 100%'],
                     ['label' => 'Color', 'value' => 'Negro']
-                ]
+                ],
+                'colors' => ['negro'],
             ]);
             Inventory::create(['product_id' => $accesorios1->id, 'size' => 'Única', 'sku' => 'ACC-TIE-001', 'status' => 'available']);
 
@@ -152,7 +157,8 @@ class ProductSeeder extends Seeder
                     ['label' => 'Material', 'value' => 'Cuero de res vacuno'],
                     ['label' => 'Ancho', 'value' => '3.5 cm'],
                     ['label' => 'Color', 'value' => 'Negro']
-                ]
+                ],
+                'colors' => ['negro'],
             ]);
             Inventory::create(['product_id' => $accesorios2->id, 'size' => '32', 'sku' => 'ACC-BELT-32', 'status' => 'available']);
             Inventory::create(['product_id' => $accesorios2->id, 'size' => '34', 'sku' => 'ACC-BELT-34', 'status' => 'available']);
@@ -170,7 +176,8 @@ class ProductSeeder extends Seeder
                     ['label' => 'Material', 'value' => 'Seda satinada'],
                     ['label' => 'Ajuste', 'value' => 'Regulable con broche'],
                     ['label' => 'Color', 'value' => 'Negro']
-                ]
+                ],
+                'colors' => ['negro'],
             ]);
             Inventory::create(['product_id' => $accesorios3->id, 'size' => 'Única', 'sku' => 'ACC-BOW-001', 'status' => 'available']);
         }

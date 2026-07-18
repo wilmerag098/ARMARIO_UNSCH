@@ -1,12 +1,12 @@
 import { ReactNode, useEffect, useState } from 'react';
-import { 
-    Menu, 
-    Search, 
-    Heart, 
-    ShoppingBag, 
-    User, 
-    LogOut, 
-    ChevronDown, 
+import {
+    Menu,
+    Search,
+    Heart,
+    ShoppingBag,
+    User,
+    LogOut,
+    ChevronDown,
     X,
     Facebook,
     Instagram,
@@ -29,6 +29,8 @@ interface PublicLayoutProps {
 export default function PublicLayout({ children, auth }: PublicLayoutProps) {
     const { url } = usePage();
     const pageProps = usePage().props;
+    const { globalCategories } = pageProps as any;
+    const categoriesList = (globalCategories || []) as Array<{ id: number; name: string; slug: string; products_count: number }>;
     const user = auth?.user || (pageProps.auth as any)?.user;
     const favoriteCount = user ? user.favorite_product_ids?.length || 0 : 0;
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -54,20 +56,26 @@ export default function PublicLayout({ children, auth }: PublicLayoutProps) {
 
     return (
         <div className="min-h-screen bg-[#fdfbfb] text-[#1a050a] flex flex-col font-sans selection:bg-[#94344c] selection:text-white">
-            
+
             {/* HEADER COMPLETO */}
             <header className="sticky top-0 z-50 w-full flex flex-col shadow-md">
-                
+
                 {/* NIVEL 1: HEADER SUPERIOR (Buscador y Acciones) */}
                 <div className="w-full bg-[#3d0d16] text-[#fdeaea] border-b border-[#571e26] py-3">
                     <div className="container mx-auto max-w-screen-xl px-4 md:px-8 flex items-center justify-between gap-4">
-                        
+
                         {/* Logo Institucional */}
                         <Link href="/" className="flex items-center gap-3.5 shrink-0">
-                            {/* Isotipo: Escudo Dorado */}
-                            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#dfb279] to-[#c19a6b] flex items-center justify-center text-[#3d0d16] shadow-md border border-[#dfb279]/30">
-                                <span className="font-serif font-black text-xl tracking-tighter">A</span>
-                            </div>
+                            {/* Logo Imagen */}
+                            <img 
+                                src="/images/LOGO.png" 
+                                alt="Logo Armario UNSCH" 
+                                className="h-10 w-auto object-contain"
+                                onError={(e) => {
+                                    // Fallback if image fails to load
+                                    e.currentTarget.style.display = 'none';
+                                }}
+                            />
                             <div className="flex flex-col">
                                 <span className="font-serif font-black text-lg md:text-xl tracking-wide uppercase text-white leading-none">
                                     Armario <span className="text-[#dfb279]">Unsch</span>
@@ -92,17 +100,17 @@ export default function PublicLayout({ children, auth }: PublicLayoutProps) {
 
                         {/* Acciones Rápidas (Favoritos, Carrito, Mi Cuenta) */}
                         <div className="flex items-center gap-6 text-[#fdeaea]/90">
-                            
+
                             {/* Favoritos */}
-                            <Link 
+                            <Link
                                 href={user ? "/perfil?tab=favoritos" : "/login"}
                                 className="flex flex-col items-center hover:text-[#dfb279] transition-colors group cursor-pointer relative"
                             >
                                 <div className="relative">
-                                    <Heart 
-                                        className="h-5 w-5 transition-transform duration-200 group-hover:scale-110" 
-                                        strokeWidth={1.75} 
-                                        fill={favoriteCount > 0 ? "#dfb279" : "none"} 
+                                    <Heart
+                                        className="h-5 w-5 transition-transform duration-200 group-hover:scale-110"
+                                        strokeWidth={1.75}
+                                        fill={favoriteCount > 0 ? "#dfb279" : "none"}
                                         stroke={favoriteCount > 0 ? "#dfb279" : "currentColor"}
                                     />
                                     {/* Badge Favoritos */}
@@ -132,7 +140,7 @@ export default function PublicLayout({ children, auth }: PublicLayoutProps) {
                             {/* Mi Cuenta (Dropdown) */}
                             <div className="relative">
                                 {auth?.user ? (
-                                    <button 
+                                    <button
                                         onClick={() => setIsAccountDropdownOpen(!isAccountDropdownOpen)}
                                         className="flex items-center gap-2.5 hover:text-[#dfb279] transition-colors cursor-pointer group focus:outline-none"
                                     >
@@ -143,8 +151,8 @@ export default function PublicLayout({ children, auth }: PublicLayoutProps) {
                                         <ChevronDown className={`h-3 w-3 text-[#dfb279] transition-transform duration-200 ${isAccountDropdownOpen ? 'rotate-180' : ''}`} />
                                     </button>
                                 ) : (
-                                    <Link 
-                                        href="/perfil" 
+                                    <Link
+                                        href="/perfil"
                                         className="flex items-center gap-2 hover:text-[#dfb279] transition-colors cursor-pointer group"
                                     >
                                         <div className="h-7 w-7 rounded-full bg-[#dfb279]/20 border border-[#dfb279]/30 flex items-center justify-center text-[#dfb279]">
@@ -203,7 +211,7 @@ export default function PublicLayout({ children, auth }: PublicLayoutProps) {
                             </div>
 
                             {/* Mobile Search Icon */}
-                            <button 
+                            <button
                                 onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
                                 className="md:hidden hover:text-[#dfb279] transition-colors cursor-pointer mr-1"
                                 aria-label="Buscar"
@@ -212,7 +220,7 @@ export default function PublicLayout({ children, auth }: PublicLayoutProps) {
                             </button>
 
                             {/* Mobile menu toggle */}
-                            <button 
+                            <button
                                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                                 className="md:hidden hover:text-[#dfb279] transition-colors cursor-pointer ml-1"
                                 aria-label="Menú"
@@ -266,13 +274,17 @@ export default function PublicLayout({ children, auth }: PublicLayoutProps) {
                                 {isCategoriesDropdownOpen && (
                                     <>
                                         <div className="fixed inset-0 z-30" onClick={() => setIsCategoriesDropdownOpen(false)} />
-                                        <div className="absolute left-0 mt-3.5 w-44 bg-[#160407] border border-[#290a0f] rounded-xl shadow-2xl py-2.5 z-40 text-left normal-case animate-in fade-in slide-in-from-top-2 duration-150">
-                                            <Link href="/catalogo?categoria=ternos" onClick={() => setIsCategoriesDropdownOpen(false)} className="block px-4 py-2 text-xs text-[#d2a9b1] hover:text-white hover:bg-[#290a0f]/40 transition-colors">Ternos</Link>
-                                            <Link href="/catalogo?categoria=vestidos" onClick={() => setIsCategoriesDropdownOpen(false)} className="block px-4 py-2 text-xs text-[#d2a9b1] hover:text-white hover:bg-[#290a0f]/40 transition-colors">Vestidos</Link>
-                                            <Link href="/catalogo?categoria=graduacion" onClick={() => setIsCategoriesDropdownOpen(false)} className="block px-4 py-2 text-xs text-[#d2a9b1] hover:text-white hover:bg-[#290a0f]/40 transition-colors">Graduación</Link>
-                                            <Link href="/catalogo?categoria=trajes-presentacion" onClick={() => setIsCategoriesDropdownOpen(false)} className="block px-4 py-2 text-xs text-[#d2a9b1] hover:text-white hover:bg-[#290a0f]/40 transition-colors">Trajes de presentación</Link>
-                                            <Link href="/catalogo?categoria=accesorios" onClick={() => setIsCategoriesDropdownOpen(false)} className="block px-4 py-2 text-xs text-[#d2a9b1] hover:text-white hover:bg-[#290a0f]/40 transition-colors">Accesorios</Link>
-                                            <Link href="/catalogo?categoria=ropa-formal" onClick={() => setIsCategoriesDropdownOpen(false)} className="block px-4 py-2 text-xs text-[#d2a9b1] hover:text-white hover:bg-[#290a0f]/40 transition-colors">Ropa formal</Link>
+                                        <div className="absolute left-0 mt-3.5 w-48 bg-[#160407] border border-[#290a0f] rounded-xl shadow-2xl py-2.5 z-40 text-left normal-case animate-in fade-in slide-in-from-top-2 duration-150">
+                                            {categoriesList.filter((cat) => cat.slug !== 'graduacion').map((cat) => (
+                                                <Link
+                                                    key={cat.id}
+                                                    href={`/catalogo?categoria=${cat.slug}`}
+                                                    onClick={() => setIsCategoriesDropdownOpen(false)}
+                                                    className="block px-4 py-2 text-xs text-[#d2a9b1] hover:text-white hover:bg-[#290a0f]/40 transition-colors"
+                                                >
+                                                    {cat.name}
+                                                </Link>
+                                            ))}
                                         </div>
                                     </>
                                 )}
@@ -311,7 +323,7 @@ export default function PublicLayout({ children, auth }: PublicLayoutProps) {
                     <div className="md:hidden fixed inset-0 z-50 bg-[#1c050a] flex flex-col p-6 animate-in slide-in-from-right duration-300">
                         <div className="flex justify-between items-center mb-8 border-b border-[#290a0f] pb-4">
                             <span className="font-serif font-black text-[#dfb279] text-lg uppercase tracking-wider">Menú de Navegación</span>
-                            <button 
+                            <button
                                 onClick={() => setIsMobileMenuOpen(false)}
                                 className="text-white hover:text-[#dfb279] transition-colors"
                             >
@@ -340,7 +352,7 @@ export default function PublicLayout({ children, auth }: PublicLayoutProps) {
             <footer className="bg-[#1c050a] text-[#d2a9b1] border-t-2 border-[#dfb279] mt-20">
                 <div className="container mx-auto max-w-screen-xl px-4 md:px-8 py-14">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 mb-12">
-                        
+
                         {/* Columna 1: Logo & Redes */}
                         <div className="lg:col-span-4 space-y-5">
                             <div className="flex items-center gap-3">

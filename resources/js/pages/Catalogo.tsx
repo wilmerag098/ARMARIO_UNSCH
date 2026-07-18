@@ -1,5 +1,6 @@
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import PublicLayout from '@/layouts/PublicLayout';
+import Pagination from '@/components/Pagination';
 import {
     Search,
     Heart,
@@ -28,6 +29,8 @@ interface Product {
     discounted_price_per_day: string | number;
     image_url: string;
     category_id: number;
+    colors?: string[] | null;
+    specifications?: { label: string; value: string }[] | null;
     category?: {
         id: number;
         name: string;
@@ -42,6 +45,7 @@ interface Product {
 interface Category {
     id: number;
     name: string;
+    slug: string;
     products_count: number;
 }
 
@@ -63,13 +67,22 @@ export default function Catalogo({ products, categories }: CatalogProps) {
     const [sortBy, setSortBy] = useState<string>('popular');
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+    const [currentPage, setCurrentPage] = useState<number>(1);
+    const itemsPerPage = 12;
+
+    // Reset page to 1 when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [selectedCategory, priceMax, selectedSize, selectedColor, selectedAvailability, searchQuery, sortBy]);
 
     // Sync URL queries on mount (e.g. ?categoria=ternos)
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const catQuery = params.get('categoria');
         if (catQuery) {
-            const matchedCat = categories.find(c => c.name.toLowerCase() === catQuery.toLowerCase());
+            const matchedCat = categories.find(
+                c => c.name.toLowerCase() === catQuery.toLowerCase() || c.slug.toLowerCase() === catQuery.toLowerCase()
+            );
             if (matchedCat) {
                 setSelectedCategory(String(matchedCat.id));
             }
@@ -149,6 +162,17 @@ export default function Catalogo({ products, categories }: CatalogProps) {
             );
         }
 
+        // Color filter
+        if (selectedColor !== 'all') {
+            result = result.filter(prod => {
+                const matchesColorsArray = prod.colors && Array.isArray(prod.colors) && prod.colors.some(c => c.toLowerCase() === selectedColor.toLowerCase());
+                const matchesSpecs = prod.specifications && Array.isArray(prod.specifications) && prod.specifications.some(spec => 
+                    spec && spec.label && spec.label.toLowerCase() === 'color' && spec.value && spec.value.toLowerCase() === selectedColor.toLowerCase()
+                );
+                return matchesColorsArray || matchesSpecs;
+            });
+        }
+
         // Availability filter
         if (selectedAvailability !== 'all') {
             result = result.filter(prod => {
@@ -173,7 +197,12 @@ export default function Catalogo({ products, categories }: CatalogProps) {
         }
 
         return result;
-    }, [products, searchQuery, selectedCategory, priceMax, selectedSize, selectedAvailability, sortBy]);
+    }, [products, searchQuery, selectedCategory, priceMax, selectedSize, selectedColor, selectedAvailability, sortBy]);
+
+    const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+    const currentProducts = useMemo(() => {
+        return filteredProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+    }, [filteredProducts, currentPage, itemsPerPage]);
 
     return (
         <PublicLayout auth={auth as any}>
@@ -219,7 +248,7 @@ export default function Catalogo({ products, categories }: CatalogProps) {
                             <span>Todos</span>
                             <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md ${selectedCategory === 'all' ? 'bg-[#dfb279]/20 text-[#dfb279]' : 'bg-[#ebd7da]/40 text-[#8a3348]/70'}`}>{totalItems}</span>
                         </button>
-                        {categories.map((cat) => (
+                        {categories.filter((cat) => cat.products_count > 0).map((cat) => (
                             <button
                                 key={cat.id}
                                 onClick={() => setSelectedCategory(String(cat.id))}
@@ -265,7 +294,7 @@ export default function Catalogo({ products, categories }: CatalogProps) {
                                         <span className="flex-grow">Todos</span>
                                         <span className="text-[10px] text-[#8a3348]/50 font-bold">{totalItems}</span>
                                     </label>
-                                    {categories.map((cat) => (
+                                    {categories.filter((cat) => cat.products_count > 0).map((cat) => (
                                         <label key={cat.id} className="flex items-center gap-2.5 text-xs text-[#1a050a] font-medium cursor-pointer">
                                             <input
                                                 type="checkbox"
@@ -390,9 +419,9 @@ export default function Catalogo({ products, categories }: CatalogProps) {
                             <div className="pt-2">
                                 <button
                                     onClick={handleClearFilters}
-                                    className="w-full py-2.5 bg-[#3d0d16] hover:bg-[#571e26] text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-md shadow-[#3d0d16]/10 text-center"
+                                    className="w-full py-2.5 border border-[#ebd7da] hover:bg-[#fcf8f9] text-[#3d0d16] font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer text-center"
                                 >
-                                    Aplicar filtros
+                                    Limpiar Filtros
                                 </button>
                             </div>
                         </div>
@@ -454,7 +483,7 @@ export default function Catalogo({ products, categories }: CatalogProps) {
                             {/* Grid de Productos (Rejilla de 4 columnas en Desktop) */}
                             <div className={`grid grid-cols-1 sm:grid-cols-2 ${viewMode === 'grid' ? 'lg:grid-cols-4' : 'lg:grid-cols-1'} gap-6`}>
                                 {filteredProducts.length > 0 ? (
-                                    filteredProducts.map((prod) => {
+                                    currentProducts.map((prod) => {
                                         const mock = productMocks[prod.id];
 
                                         // Obtener las tallas únicas disponibles del inventario real
@@ -553,35 +582,12 @@ export default function Catalogo({ products, categories }: CatalogProps) {
                             </div>
 
                             {/* Paginación */}
-                            {filteredProducts.length > 0 && (
-                                <div className="flex justify-center items-center gap-1.5 pt-6 text-xs font-bold uppercase tracking-wider text-[#8a3348]/80">
-                                    <button className="h-8.5 w-8.5 rounded-lg border border-[#ebd7da] flex items-center justify-center hover:bg-[#fcf8f9] transition-all cursor-pointer">
-                                        &lt;
-                                    </button>
-                                    <button className="h-8.5 w-8.5 rounded-lg bg-[#3d0d16] text-[#dfb279] flex items-center justify-center cursor-pointer">
-                                        1
-                                    </button>
-                                    <button className="h-8.5 w-8.5 rounded-lg border border-[#ebd7da] flex items-center justify-center hover:bg-[#fcf8f9] transition-all cursor-pointer">
-                                        2
-                                    </button>
-                                    <button className="h-8.5 w-8.5 rounded-lg border border-[#ebd7da] flex items-center justify-center hover:bg-[#fcf8f9] transition-all cursor-pointer">
-                                        3
-                                    </button>
-                                    <button className="h-8.5 w-8.5 rounded-lg border border-[#ebd7da] flex items-center justify-center hover:bg-[#fcf8f9] transition-all cursor-pointer">
-                                        4
-                                    </button>
-                                    <button className="h-8.5 w-8.5 rounded-lg border border-[#ebd7da] flex items-center justify-center hover:bg-[#fcf8f9] transition-all cursor-pointer">
-                                        5
-                                    </button>
-                                    <span className="px-1 text-[#8a3348]/45">...</span>
-                                    <button className="h-8.5 w-8.5 rounded-lg border border-[#ebd7da] flex items-center justify-center hover:bg-[#fcf8f9] transition-all cursor-pointer">
-                                        8
-                                    </button>
-                                    <button className="h-8.5 w-8.5 rounded-lg border border-[#ebd7da] flex items-center justify-center hover:bg-[#fcf8f9] transition-all cursor-pointer">
-                                        &gt;
-                                    </button>
-                                </div>
-                            )}
+                            <Pagination 
+                                currentPage={currentPage}
+                                totalPages={totalPages}
+                                onPageChange={setCurrentPage}
+                                theme="light"
+                            />
                         </div>
                     </div>
                 </div>
@@ -651,7 +657,7 @@ export default function Catalogo({ products, categories }: CatalogProps) {
                                             <span className="flex-grow">Todos</span>
                                             <span className="text-[10px] text-[#8a3348]/50 font-bold">{totalItems}</span>
                                         </label>
-                                        {categories.map((cat) => (
+                                        {categories.filter((cat) => cat.products_count > 0).map((cat) => (
                                             <label key={cat.id} className="flex items-center gap-2.5 text-xs text-[#1a050a] font-medium cursor-pointer">
                                                 <input
                                                     type="checkbox"
