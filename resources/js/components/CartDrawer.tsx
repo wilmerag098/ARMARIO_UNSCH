@@ -100,19 +100,30 @@ export default function CartDrawer({
                                                     <h3 className="text-xs font-bold text-white mb-1 line-clamp-2 leading-tight">
                                                         {item.product?.name}
                                                     </h3>
-                                                    <p className="text-[10px] text-white/50 mb-0.5">
+                                                    <p className="text-[10px] text-white/55 mb-0.5">
                                                         Talla: <span className="font-bold text-white">{item.selectedSize}</span>
                                                         {item.selectedColor && <> | Color: <span className="font-bold text-white capitalize">{item.selectedColor}</span></>}
                                                     </p>
-                                                    <p className="text-[10px] text-white/40">
+                                                    <p className="text-[10px] text-white/45 mb-2">
                                                         Renta: <span className="font-medium text-white/70">{item.startDate} al {item.endDate}</span> ({item.rentDays} {item.rentDays === 1 ? 'día' : 'días'})
                                                     </p>
+                                                    {/* Cost breakdown details */}
+                                                    <div className="flex flex-col gap-1 text-[10px] text-white/40 bg-white/5 p-2 rounded-xl border border-white/5">
+                                                        <div className="flex justify-between">
+                                                            <span>Alquiler subtotal:</span>
+                                                            <span className="font-bold text-white/80">S/ {itemSubtotal.toFixed(2)}</span>
+                                                        </div>
+                                                        <div className="flex justify-between">
+                                                            <span>Garantía Reembolsable:</span>
+                                                            <span className="font-bold text-white/80">S/ {itemDeposit.toFixed(2)}</span>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div className="flex justify-between items-center mt-2 pt-2 border-t border-white/5">
+                                                <div className="flex justify-between items-center mt-2.5 pt-2 border-t border-white/5">
                                                     <span className="text-[#facc15] font-bold text-xs">
-                                                        S/ {pricePerDay.toFixed(2)} <span className="text-[9px] text-white/40 font-normal">/ día</span>
+                                                        S/ {pricePerDay.toFixed(2)} <span className="text-[9px] text-white/45 font-normal">/ día</span>
                                                     </span>
-                                                    <span className="text-[10px] text-white/60 font-semibold">
+                                                    <span className="text-[11px] text-white font-extrabold">
                                                         Total: S/ {itemTotal.toFixed(2)}
                                                     </span>
                                                 </div>

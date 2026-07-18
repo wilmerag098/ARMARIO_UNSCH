@@ -56,6 +56,12 @@ class CheckoutController extends Controller
             'accessories.*.inventory_id' => 'required|exists:inventories,id',
             'payment_method' => 'required|string|in:yape,plin,mercadopago',
             'payment_reference' => 'required_if:payment_method,yape,plin|nullable|string|min:8|max:20',
+            // Opcionalmente actualizar perfil de usuario si es enviado
+            'name' => 'nullable|string|max:255',
+            'last_name' => 'nullable|string|max:255',
+            'dni' => 'nullable|string|max:20|unique:users,dni,' . Auth::id(),
+            'university_id' => 'nullable|string|max:255|unique:users,university_id,' . Auth::id(),
+            'phone' => 'nullable|string|max:20',
         ]);
 
         $product = Product::where('status', 'active')->findOrFail($validated['product_id']);
@@ -120,18 +126,60 @@ class CheckoutController extends Controller
             }
         }
 
-        $serviceFee = 15.00;
-        $totalAmount = $mainSubtotal + $accessoriesSubtotal - $discountAmount + $serviceFee;
+        // Calculate guarantee amount
+        $securityDeposit = floatval($product->security_deposit);
+        if ($securityDeposit <= 0) {
+            $securityDeposit = floatval($product->discounted_price_per_day) * 0.20;
+        }
+
+        if (!empty($validated['accessories'])) {
+            foreach ($validated['accessories'] as $accData) {
+                $accProduct = Product::where('status', 'active')->findOrFail($accData['product_id']);
+                $accDeposit = floatval($accProduct->security_deposit);
+                if ($accDeposit <= 0) {
+                    $accDeposit = floatval($accProduct->price_per_day) * 0.20;
+                }
+                $securityDeposit += $accDeposit;
+            }
+        }
+
+        // Total = mainSubtotal + accessoriesSubtotal - discountAmount + securityDeposit
+        $totalAmount = $mainSubtotal + $accessoriesSubtotal - $discountAmount + $securityDeposit;
+
+        // Actualizar perfil de usuario si es enviado y difiere
+        $user = Auth::user();
+        if ($user) {
+            $userUpdateData = [];
+            if ($request->filled('name') && $request->name !== $user->name) {
+                $userUpdateData['name'] = $request->name;
+            }
+            if ($request->filled('last_name') && $request->last_name !== $user->last_name) {
+                $userUpdateData['last_name'] = $request->last_name;
+            }
+            if ($request->filled('dni') && $request->dni !== $user->dni) {
+                $userUpdateData['dni'] = $request->dni;
+            }
+            if ($request->filled('university_id') && $request->university_id !== $user->university_id) {
+                $userUpdateData['university_id'] = $request->university_id;
+            }
+            if ($request->filled('phone') && $request->phone !== $user->phone) {
+                $userUpdateData['phone'] = $request->phone;
+            }
+            if (!empty($userUpdateData)) {
+                $user->update($userUpdateData);
+            }
+        }
 
         // Generate unique order number
         $orderNumber = 'RES-' . strtoupper(uniqid());
 
         $reservation = Reservation::create([
-            'user_id' => Auth::id(),
+            'user_id' => $user->id,
             'order_number' => $orderNumber,
             'start_date' => $validated['start_date'],
             'end_date' => $validated['end_date'],
             'total_amount' => $totalAmount,
+            'guarantee_amount' => $securityDeposit,
             'discount_amount' => $discountAmount,
             'promotion_id' => $appliedPromotionId,
             'payment_method' => $validated['payment_method'],
@@ -212,19 +260,24 @@ class CheckoutController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'university_id' => 'nullable|string|max:255|unique:users',
-            'address' => 'nullable|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'dni' => 'required|string|max:20|unique:users,dni',
+            'university_id' => 'required|string|max:255|unique:users,university_id',
+            'phone' => 'required|string|max:20',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
         ]);
 
         $user = \App\Models\User::create([
             'name' => $validated['name'],
+            'last_name' => $validated['last_name'],
+            'dni' => $validated['dni'],
             'university_id' => $validated['university_id'],
-            'address' => $validated['address'],
+            'phone' => $validated['phone'],
             'email' => $validated['email'],
             'password' => \Illuminate\Support\Facades\Hash::make($validated['password']),
             'email_verified_at' => now(),
+            'role' => 'user',
         ]);
 
         Auth::login($user);
