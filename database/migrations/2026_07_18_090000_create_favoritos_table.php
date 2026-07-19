@@ -9,7 +9,7 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function run(): void
+    public function up(): void
     {
         // Eliminar la tabla en inglés si existiera
         Schema::dropIfExists('favorites');
