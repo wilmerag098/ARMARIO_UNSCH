@@ -1,12 +1,21 @@
 import { Head, Link, usePage, useForm, router } from '@inertiajs/react';
-import { useState, useEffect } from 'react';
 import { initMercadoPago, CardPayment } from '@mercadopago/sdk-react';
 import { 
-    ArrowLeft, HelpCircle, Check, CreditCard, Lock, AlertCircle, 
+    Check, CreditCard, Lock, AlertCircle, 
     Calendar, User as UserIcon, Mail, Shield, Sparkles, 
     GraduationCap, Phone, CheckCircle2, RefreshCw, Key, Info, Tag, X, FileText,
     MapPin, Truck, ShoppingBag
 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+
+const { defaultStartDate, defaultEndDate } = (() => {
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    const threeDaysLater = new Date(today.getTime() + 86400000 * 3);
+    const threeDaysLaterStr = threeDaysLater.toISOString().split('T')[0];
+
+    return { defaultStartDate: todayStr, defaultEndDate: threeDaysLaterStr };
+})();
 
 export default function Checkout({ 
     product, 
@@ -40,13 +49,47 @@ export default function Checkout({
         || product?.inventories?.find((i: any) => i.status === 'available') 
         || product?.inventories?.[0];
 
+    // Leer full cart items de localStorage
+    const initialCart = typeof window !== 'undefined' ? (() => {
+        const stored = localStorage.getItem('armario_rental_cart');
+
+        if (stored) {
+            try {
+                return JSON.parse(stored) || [];
+            } catch {
+                return [];
+            }
+        }
+
+        return [];
+    })() : [];
+
+    const firstCartItem = initialCart[0];
+    const mainInvId = firstCartItem ? (firstCartItem.product?.inventories?.find((i: any) => i.size === firstCartItem.selectedSize && i.status === 'available')?.id 
+        || firstCartItem.product?.inventories?.[0]?.id || '') : (initialInventory?.id || '');
+
+    const initialProduct_id = firstCartItem ? firstCartItem.product.id : (product?.id || '');
+    const initialColor = firstCartItem ? (firstCartItem.selectedColor || '') : (colorParam || '');
+    const initialStartDate = firstCartItem ? (firstCartItem.startDate || (startParam || defaultStartDate)) : (startParam || defaultStartDate);
+    const initialEndDate = firstCartItem ? (firstCartItem.endDate || (endParam || defaultEndDate)) : (endParam || defaultEndDate);
+
+    const initialAccessories = initialCart.slice(1).map((item: any) => {
+        const invId = item.product?.inventories?.find((i: any) => i.size === item.selectedSize && i.status === 'available')?.id 
+            || item.product?.inventories?.[0]?.id || '';
+
+        return {
+            product_id: item.product.id,
+            inventory_id: invId
+        };
+    });
+
     // Si ya inició sesión, se pre-rellenan sus datos, de lo contrario empiezan vacíos
-    const { data, setData, post, processing, errors } = useForm({
-        product_id: product?.id,
-        inventory_id: initialInventory?.id || '',
-        color: colorParam || '',
-        start_date: startParam || new Date().toISOString().split('T')[0],
-        end_date: endParam || new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0],
+    const { data, setData, processing, errors } = useForm({
+        product_id: initialProduct_id,
+        inventory_id: mainInvId,
+        color: initialColor,
+        start_date: initialStartDate,
+        end_date: initialEndDate,
         name: auth.user?.name || '',
         last_name: auth.user?.last_name || '',
         dni: auth.user?.dni || '',
@@ -54,13 +97,13 @@ export default function Checkout({
         phone: auth.user?.phone || '',
         email: auth.user?.email || '',
         password: '',
-        accessories: [] as { product_id: number; inventory_id: number }[],
+        accessories: initialAccessories,
         payment_method: 'mercadopago',
         payment_reference: '',
         delivery_method: 'pickup', // Recojo en tienda por defecto
     });
 
-    const [cartItems, setCartItems] = useState<any[]>([]);
+    const cartItems = initialCart;
 
     // Sincronizar datos de usuario logueado en caso cambie el estado auth (ej. tras login/registro)
     useEffect(() => {
@@ -75,48 +118,7 @@ export default function Checkout({
                 email: auth.user.email || '',
             }));
         }
-    }, [auth.user]);
-
-    // Leer full cart items de localStorage
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            const stored = localStorage.getItem('armario_rental_cart');
-            if (stored) {
-                try {
-                    const parsed = JSON.parse(stored) || [];
-                    if (parsed.length > 0) {
-                        setCartItems(parsed);
-                        
-                        const firstItem = parsed[0];
-                        const mainInvId = firstItem.product?.inventories?.find((i: any) => i.size === firstItem.selectedSize && i.status === 'available')?.id 
-                            || firstItem.product?.inventories?.[0]?.id || '';
-                        
-                        // Map the rest of the cart items to the accessories array
-                        const mappedAcc = parsed.slice(1).map((item: any) => {
-                            const invId = item.product?.inventories?.find((i: any) => i.size === item.selectedSize && i.status === 'available')?.id 
-                                || item.product?.inventories?.[0]?.id || '';
-                            return {
-                                product_id: item.product.id,
-                                inventory_id: invId
-                            };
-                        });
-
-                        setData(prev => ({
-                            ...prev,
-                            product_id: firstItem.product.id,
-                            inventory_id: mainInvId,
-                            color: firstItem.selectedColor || '',
-                            start_date: firstItem.startDate || prev.start_date,
-                            end_date: firstItem.endDate || prev.end_date,
-                            accessories: mappedAcc
-                        }));
-                    }
-                } catch (e) {
-                    console.error('Error parsing cart from localStorage', e);
-                }
-            }
-        }
-    }, []);
+    }, [auth.user, setData]);
 
     const calculateTotal = () => {
         const start = new Date(data.start_date);
@@ -144,9 +146,11 @@ export default function Checkout({
                 const accPrice = parseFloat(item.product?.discounted_price_per_day || item.product?.price_per_day) || 0;
                 const accSub = accPrice * diffDays;
                 let accDep = parseFloat(item.product?.security_deposit);
+
                 if (isNaN(accDep) || accDep <= 0) {
                     accDep = accPrice * 0.20;
                 }
+
                 accessoriesSubtotal += accSub;
                 accessoriesGarantia += accDep;
             });
@@ -154,13 +158,16 @@ export default function Checkout({
             // Fallback to data.accessories checklist (for standalone checkout)
             data.accessories.forEach((item) => {
                 const acc = accessories.find((a) => a.id === item.product_id);
+
                 if (acc) {
                     const accPrice = parseFloat(acc?.discounted_price_per_day || acc?.price_per_day) || 0;
                     const accSub = accPrice * diffDays;
                     let accDep = parseFloat(acc?.security_deposit);
+
                     if (isNaN(accDep) || accDep <= 0) {
                         accDep = accPrice * 0.20;
                     }
+
                     accessoriesSubtotal += accSub;
                     accessoriesGarantia += accDep;
                 }
@@ -170,6 +177,7 @@ export default function Checkout({
         // Apply discount on accessories if main garment rent subtotal > promotion min_amount
         let discountAmount = 0;
         const isPromoApplicable = promotion && (mainSubtotal > parseFloat(promotion.min_amount));
+
         if (isPromoApplicable && accessoriesSubtotal > 0) {
             discountAmount = accessoriesSubtotal * (parseFloat(promotion.discount_percentage) / 100);
         }
@@ -203,34 +211,45 @@ export default function Checkout({
     const validateCheckoutForm = () => {
         const start = new Date(data.start_date);
         const end = new Date(data.end_date);
+
         if (isNaN(start.getTime()) || isNaN(end.getTime())) {
             alert('Por favor, ingresa fechas válidas para el alquiler.');
+
             return false;
         }
+
         if (end < start) {
             alert('La fecha de devolución debe ser posterior o igual a la de recogida.');
+
             return false;
         }
+
         if (!data.inventory_id) {
             alert('Por favor, selecciona una talla antes de continuar.');
+
             return false;
         }
+
         if (!auth.user) {
             if (authMode === 'register') {
                 if (!data.name || !data.last_name || !data.dni || !data.university_id || !data.phone || !data.email || !data.password) {
                     alert('Por favor, completa todos los campos de datos personales y contraseña para registrarte.');
+
                     return false;
                 }
             } else {
                 alert('Por favor, inicia sesión primero usando el formulario correspondiente.');
+
                 return false;
             }
         } else {
             if (!data.name || !data.last_name || !data.dni || !data.university_id || !data.phone || !data.email) {
                 alert('Por favor, completa todos los campos de datos personales obligatorios.');
+
                 return false;
             }
         }
+
         return true;
     };
 
@@ -771,6 +790,7 @@ export default function Checkout({
                                             const pricePerDay = parseFloat(item.product?.discounted_price_per_day || item.product?.price_per_day || '0');
                                             const itemSubtotal = pricePerDay * diffDays;
                                             let itemDeposit = parseFloat(item.product?.security_deposit);
+
                                             if (isNaN(itemDeposit) || itemDeposit <= 0) {
                                                 itemDeposit = pricePerDay * 0.20;
                                             }

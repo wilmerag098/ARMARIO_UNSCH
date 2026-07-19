@@ -1,23 +1,16 @@
-import React, { useState } from 'react';
 import { Head } from '@inertiajs/react';
-import AdminLayout from '@/layouts/AdminLayout';
 import {
     BarChart3,
-    PieChart,
     TrendingUp,
     Users,
     Layers,
     Download,
-    CreditCard,
-    Calendar,
-    DollarSign,
-    AlertTriangle,
-    Shirt,
-    Info,
     CheckCircle2,
     FileSpreadsheet,
     Award
 } from 'lucide-react';
+import React, { useState } from 'react';
+import AdminLayout from '@/layouts/AdminLayout';
 
 interface CategoryDistribution {
     name: string;
@@ -386,6 +379,7 @@ export default function Reports({
                                                 strokeDashoffset={`-${offset}`}
                                             />
                                         );
+
                                         return acc;
                                     }, { segments: [] as React.ReactNode[], currentOffset: 0 }).segments}
                                 </svg>
@@ -398,6 +392,7 @@ export default function Reports({
                             <div className="space-y-2 text-xs flex-grow">
                                 {inventoryStatus.map((item, idx) => {
                                     const percent = totalInventories > 0 ? Math.round((item.total / totalInventories) * 100) : 0;
+
                                     return (
                                         <div key={idx} className="flex items-center justify-between">
                                             <span className="flex items-center gap-1.5 text-[#8a3348]/80 font-medium">
@@ -440,6 +435,7 @@ export default function Reports({
                             {popularSizes.map((size, idx) => {
                                 const totalCount = popularSizes.reduce((s, item) => s + item.total, 0);
                                 const percentage = totalCount > 0 ? Math.round((size.total / totalCount) * 100) : 0;
+
                                 return (
                                     <div key={idx} className="space-y-1.5">
                                         <div className="flex justify-between text-xs font-semibold">
@@ -470,7 +466,8 @@ export default function Reports({
                             <h3 className="font-extrabold text-[#1a050a] text-sm uppercase tracking-wider">Clientes Frecuentes (Top 5 Estudiantes)</h3>
                         </div>
 
-                        <div className="flex-1 overflow-x-auto">
+                        {/* Desktop View */}
+                        <div className="hidden sm:block flex-1 overflow-x-auto">
                             <table className="w-full text-left border-collapse text-xs">
                                 <thead>
                                     <tr className="border-b border-[#ebd7da] text-[#8a3348]/70 uppercase tracking-wider">
@@ -492,6 +489,23 @@ export default function Reports({
                                     ))}
                                 </tbody>
                             </table>
+                        </div>
+
+                        {/* Mobile View */}
+                        <div className="block sm:hidden divide-y divide-[#fcf8f9] text-xs">
+                            {topStudents.map((student, idx) => (
+                                <div key={idx} className="py-3 flex justify-between items-center hover:bg-[#fcf8f9]/40">
+                                    <div>
+                                        <div className="font-bold text-[#1a050a]">{student.name}</div>
+                                        <div className="text-[10px] text-[#8a3348]/60 mt-0.5">{student.email}</div>
+                                        <div className="text-[10px] text-stone-500 font-bold mt-1 uppercase tracking-wider">{student.total_rentals} alquileres</div>
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="text-[10px] text-stone-400 block font-bold uppercase tracking-wider">Inversión</span>
+                                        <span className="font-black text-[#94344c]">S/ {Number(student.total_spent).toFixed(2)}</span>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
 

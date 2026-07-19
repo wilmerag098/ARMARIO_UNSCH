@@ -1,13 +1,9 @@
-import React, { useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
-import AdminLayout from '@/layouts/AdminLayout';
 import {
     Calendar,
     TrendingUp,
     AlertTriangle,
     ShoppingBag,
-    Download,
-    MoreHorizontal,
     Users,
     Shirt,
     Plus,
@@ -15,9 +11,10 @@ import {
     Check,
     Info,
     UserPlus,
-    ChevronRight,
     ChevronDown
 } from 'lucide-react';
+import React from 'react';
+import AdminLayout from '@/layouts/AdminLayout';
 
 interface MetricCardProps {
     title: string;
@@ -180,11 +177,11 @@ export default function Dashboard({
     // SVG coordinates calculator for main line chart
     const maxEarnings = Math.max(...dailyEarnings.map(d => d.ingresos), 1000);
     const yMax = Math.ceil(maxEarnings / 5000) * 5000; // Round up to nearest 5k
-    const yGridValues = [yMax, yMax * 5/6, yMax * 4/6, yMax * 3/6, yMax * 2/6, yMax * 1/6, 0];
 
     const chartPoints = dailyEarnings.map((d, index) => {
         const x = 50 + (index * 70); // 7 points spread across 500px width
         const y = 180 - (d.ingresos / yMax * 140); // Max height 140px, bottom at 180px
+
         return { x, y };
     });
 
@@ -333,6 +330,7 @@ export default function Dashboard({
                         {recentReservations.length > 0 ? (
                             recentReservations.map((res) => {
                                 const mainItem = res.items?.[0];
+
                                 return (
                                     <div key={res.id} className="flex items-center justify-between gap-3 text-xs border-b border-[#fcf8f9] pb-3 last:border-0 last:pb-0">
                                         <div className="flex items-center gap-2.5 min-w-0">

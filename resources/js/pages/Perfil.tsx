@@ -1,6 +1,4 @@
-import React, { useState, useEffect } from 'react';
 import { Head, usePage, useForm, router, Link } from '@inertiajs/react';
-import PublicLayout from '@/layouts/PublicLayout';
 import { 
     User, 
     Heart, 
@@ -14,10 +12,11 @@ import {
     Trash2, 
     Mail, 
     Phone, 
-    Bookmark, 
     Check,
     Lock
 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import PublicLayout from '@/layouts/PublicLayout';
 
 interface ReservationItem {
     id: number;
@@ -63,30 +62,40 @@ interface PerfilProps {
 
 export default function Perfil({ reservations, favorites }: PerfilProps) {
     const { auth } = usePage().props;
-    const [activeTab, setActiveTab] = useState<'reservas' | 'favoritos' | 'editar'>('reservas');
+    const [activeTab, setActiveTab] = useState<'reservas' | 'favoritos' | 'editar'>(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const tabQuery = params.get('tab');
+
+            if (tabQuery === 'reservas' || tabQuery === 'favoritos' || tabQuery === 'editar') {
+                return tabQuery;
+            }
+        }
+
+        return 'reservas';
+    });
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-    // Sync tab from URL query (?tab=reservas)
-    useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        const tabQuery = params.get('tab');
-        if (tabQuery === 'reservas' || tabQuery === 'favoritos' || tabQuery === 'editar') {
-            setActiveTab(tabQuery);
-        }
-    }, []);
+    const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 4000);
+    };
 
     // Detectar retorno de pago desde Mercado Pago
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const paymentStatus = params.get('payment_status');
+
         if (paymentStatus) {
-            if (paymentStatus === 'success') {
-                showToast('¡Pago realizado con éxito! Tu reserva ha sido confirmada.', 'success');
-            } else if (paymentStatus === 'pending') {
-                showToast('Tu pago está en proceso de verificación por Mercado Pago.', 'success');
-            } else if (paymentStatus === 'failure') {
-                showToast('No se pudo completar el pago. Por favor, inténtalo de nuevo.', 'error');
-            }
+            setTimeout(() => {
+                if (paymentStatus === 'success') {
+                    showToast('¡Pago realizado con éxito! Tu reserva ha sido confirmada.', 'success');
+                } else if (paymentStatus === 'pending') {
+                    showToast('Tu pago está en proceso de verificación por Mercado Pago.', 'success');
+                } else if (paymentStatus === 'failure') {
+                    showToast('No se pudo completar el pago. Por favor, inténtalo de nuevo.', 'error');
+                }
+            }, 0);
 
             // Limpiar parámetros de Mercado Pago de la URL sin recargar la página
             const mpParams = [
@@ -107,11 +116,6 @@ export default function Perfil({ reservations, favorites }: PerfilProps) {
         name: (auth.user as any).name || '',
         phone: (auth.user as any).phone || ''
     });
-
-    const showToast = (message: string, type: 'success' | 'error' = 'success') => {
-        setToast({ message, type });
-        setTimeout(() => setToast(null), 4000);
-    };
 
     const handleSaveProfile = (e: React.FormEvent) => {
         e.preventDefault();

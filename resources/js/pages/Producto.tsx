@@ -1,8 +1,7 @@
 import { Head, Link, usePage, router } from '@inertiajs/react';
-import PublicLayout from '@/layouts/PublicLayout';
-import { Heart, Star, ShieldCheck, Lock, Sparkles, Scissors, X, ChevronDown, ChevronUp, Info, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Heart, X, ChevronDown, ChevronUp, Info, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { useState } from 'react';
-import CartDrawer from '@/components/CartDrawer';
+import PublicLayout from '@/layouts/PublicLayout';
 
 const colorHexMap: Record<string, string> = {
     'azul marino': '#0f172a',
@@ -33,12 +32,14 @@ export default function Producto({ product, relatedProducts = [] }: { product: a
     const getTomorrowString = () => {
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
+
         return tomorrow.toISOString().split('T')[0];
     };
 
     const getThreeDaysLaterString = () => {
         const date = new Date();
         date.setDate(date.getDate() + 4);
+
         return date.toISOString().split('T')[0];
     };
 
@@ -51,13 +52,21 @@ export default function Producto({ product, relatedProducts = [] }: { product: a
         const e = new Date(end);
         const diff = e.getTime() - s.getTime();
         const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+
         return days > 0 ? days : 1;
     };
 
     const formatDate = (dateStr: string) => {
-        if (!dateStr) return '';
+        if (!dateStr) {
+return '';
+}
+
         const parts = dateStr.split('-');
-        if (parts.length !== 3) return dateStr;
+
+        if (parts.length !== 3) {
+return dateStr;
+}
+
         return `${parts[2]}/${parts[1]}/${parts[0]}`;
     };
 
@@ -69,8 +78,10 @@ export default function Producto({ product, relatedProducts = [] }: { product: a
     const handleToggleFav = (productId: number) => {
         if (!auth?.user) {
             router.get('/login');
+
             return;
         }
+
         router.post(`/favoritos/toggle/${productId}`, {}, {
             preserveScroll: true
         });
@@ -79,9 +90,11 @@ export default function Producto({ product, relatedProducts = [] }: { product: a
     // 1. Dynamic gallery images based on product upload or category fallback
     const getGalleryImages = () => {
         const mainImg = product?.image_url || 'https://images.unsplash.com/photo-1593030761757-71fae45fa0e7?q=80&w=800&auto=format&fit=crop';
+
         if (product?.images && Array.isArray(product.images) && product.images.length > 0) {
             return product.images;
         }
+
         if (product?.category?.slug === 'vestidos') {
             return [
                 mainImg,
@@ -109,6 +122,7 @@ export default function Producto({ product, relatedProducts = [] }: { product: a
     const sizes = ['XS', 'S', 'M', 'L', 'XL'];
     const [selectedSize, setSelectedSize] = useState(() => {
         const firstAvailable = product?.inventories?.find((i: any) => i.status === 'available');
+
         return firstAvailable ? firstAvailable.size : (product?.inventories?.[0]?.size || 'M');
     });
     const [selectedColor, setSelectedColor] = useState<string>('');
@@ -141,11 +155,12 @@ export default function Producto({ product, relatedProducts = [] }: { product: a
 
         const stored = localStorage.getItem('armario_rental_cart');
         let cartList = [];
+
         if (stored) {
             try {
                 const parsed = JSON.parse(stored);
                 cartList = Array.isArray(parsed) ? parsed : [parsed];
-            } catch (e) {
+            } catch {
                 cartList = [];
             }
         }
@@ -173,7 +188,10 @@ export default function Producto({ product, relatedProducts = [] }: { product: a
     };
 
     const handleTouchEnd = (e: React.TouchEvent) => {
-        if (touchStart === null) return;
+        if (touchStart === null) {
+return;
+}
+
         const touchEnd = e.changedTouches[0].clientX;
         const diff = touchStart - touchEnd;
 
@@ -184,6 +202,7 @@ export default function Producto({ product, relatedProducts = [] }: { product: a
             // Swipe Right -> Prev Image
             setActiveImageIndex((prev) => (prev - 1 + galleryImages.length) % galleryImages.length);
         }
+
         setTouchStart(null);
     };
 
@@ -457,6 +476,7 @@ export default function Producto({ product, relatedProducts = [] }: { product: a
                                             min={getTomorrowString()}
                                             onChange={(e) => {
                                                 setStartDate(e.target.value);
+
                                                 if (new Date(e.target.value) >= new Date(endDate)) {
                                                     const nextDay = new Date(e.target.value);
                                                     nextDay.setDate(nextDay.getDate() + 3);

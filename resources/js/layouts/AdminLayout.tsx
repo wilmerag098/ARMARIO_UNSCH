@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import { Link, usePage, router } from '@inertiajs/react';
 import { 
     LayoutGrid, 
@@ -21,6 +20,7 @@ import {
     BookOpen,
     Phone
 } from 'lucide-react';
+import React, { useState } from 'react';
 
 interface SidebarItemProps {
     href: string;
@@ -57,12 +57,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const [isHelpOpen, setIsHelpOpen] = useState(false);
     const [notifications, setNotifications] = useState<any[]>(adminNotifications);
 
-    // Sincronizar las notificaciones cuando los props cambien
-    React.useEffect(() => {
-        if ((props as any).adminNotifications) {
-            setNotifications((props as any).adminNotifications);
-        }
-    }, [(props as any).adminNotifications]);
+    const [prevAdminNotifications, setPrevAdminNotifications] = useState((props as any).adminNotifications);
+
+    if ((props as any).adminNotifications !== prevAdminNotifications) {
+        setPrevAdminNotifications((props as any).adminNotifications);
+        setNotifications((props as any).adminNotifications || []);
+    }
 
     // Sincronización automática de datos en segundo plano (cada 15 segundos)
     React.useEffect(() => {

@@ -1,8 +1,5 @@
-import React, { useState } from 'react';
 import { Head, useForm } from '@inertiajs/react';
-import AdminLayout from '@/layouts/AdminLayout';
 import {
-    Settings as SettingsIcon,
     Save,
     Clock,
     Coins,
@@ -12,6 +9,8 @@ import {
     X,
     Check
 } from 'lucide-react';
+import React, { useState } from 'react';
+import AdminLayout from '@/layouts/AdminLayout';
 
 interface SettingsData {
     max_rental_days: number | string;

@@ -1,6 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
 import { Head, usePage, useForm } from '@inertiajs/react';
-import AdminLayout from '@/layouts/AdminLayout';
 import { 
     User, 
     Lock, 
@@ -9,16 +7,14 @@ import {
     Shield, 
     Settings, 
     Bell, 
-    Upload, 
     Save, 
     Check, 
     X,
-    UserCheck,
-    Globe,
     Clock,
-    AlertCircle,
     ChevronDown
 } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import AdminLayout from '@/layouts/AdminLayout';
 
 interface ProfileForm {
     names: string;
@@ -78,16 +74,17 @@ export default function Profile() {
     const [avatarPreview, setAvatarPreview] = useState<string | null>(
         user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'Admin')}&background=571e26&color=ffb6c5&bold=true&size=128`
     );
-
-    // Sync avatar preview if user changes
-    useEffect(() => {
-        if (user?.avatar) {
-            setAvatarPreview(user.avatar);
-        }
-    }, [user?.avatar]);
+    
+    const [prevUserAvatar, setPrevUserAvatar] = useState(user?.avatar);
+    
+    if (user?.avatar !== prevUserAvatar) {
+        setPrevUserAvatar(user?.avatar);
+        setAvatarPreview(user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'Admin')}&background=571e26&color=ffb6c5&bold=true&size=128`);
+    }
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
+
         if (file) {
             setData('avatar', file);
             const reader = new FileReader();

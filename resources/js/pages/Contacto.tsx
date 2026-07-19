@@ -1,6 +1,4 @@
-import React, { useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
-import PublicLayout from '@/layouts/PublicLayout';
 import { 
     Mail, 
     Phone, 
@@ -11,6 +9,8 @@ import {
     X,
     MessageCircle
 } from 'lucide-react';
+import React, { useState } from 'react';
+import PublicLayout from '@/layouts/PublicLayout';
 
 export default function Contacto() {
     const { auth } = usePage().props;

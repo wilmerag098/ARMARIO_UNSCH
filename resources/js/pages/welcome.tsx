@@ -1,7 +1,6 @@
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import { 
     GraduationCap, 
-    Calendar,
     Shirt,
     Award,
     Gem,
@@ -15,6 +14,7 @@ import {
     Heart,
     Eye
 } from 'lucide-react';
+import { useState } from 'react';
 import PublicLayout from '@/layouts/PublicLayout';
 
 interface Product {
@@ -41,12 +41,16 @@ interface WelcomeProps {
 
 export default function Welcome({ products }: WelcomeProps) {
     const { auth } = usePage().props;
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
 
     const handleToggleFav = (productId: number) => {
         if (!auth?.user) {
             router.get('/login');
+
             return;
         }
+
         router.post(`/favoritos/toggle/${productId}`, {}, {
             preserveScroll: true
         });
@@ -202,6 +206,8 @@ export default function Welcome({ products }: WelcomeProps) {
                             <label className="text-[10px] font-bold uppercase tracking-wider text-[#8a3348]/60">Fecha de uso</label>
                             <input 
                                 type="date" 
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
                                 className="w-full bg-[#fcf8f9] border border-[#ebd7da] rounded-xl px-3 py-2 text-xs font-bold text-[#1a050a] focus:outline-none focus:border-[#94344c]"
                             />
                         </div>
@@ -211,6 +217,8 @@ export default function Welcome({ products }: WelcomeProps) {
                             <label className="text-[10px] font-bold uppercase tracking-wider text-[#8a3348]/60">Fecha de devolución</label>
                             <input 
                                 type="date" 
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
                                 className="w-full bg-[#fcf8f9] border border-[#ebd7da] rounded-xl px-3 py-2 text-xs font-bold text-[#1a050a] focus:outline-none focus:border-[#94344c]"
                             />
                         </div>
@@ -218,7 +226,7 @@ export default function Welcome({ products }: WelcomeProps) {
                         {/* Botón de envío */}
                         <div className="pt-5 md:pt-4">
                             <Link 
-                                href="/catalogo"
+                                href={startDate && endDate ? `/catalogo?start_date=${startDate}&end_date=${endDate}` : '/catalogo'}
                                 className="w-full py-2.5 bg-[#3d0d16] hover:bg-[#571e26] text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md shadow-[#3d0d16]/10 flex items-center justify-center cursor-pointer"
                             >
                                 Buscar disponibilidad
@@ -245,6 +253,7 @@ export default function Welcome({ products }: WelcomeProps) {
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
                     {categories.map((cat, idx) => {
                         const IconComponent = cat.icon;
+
                         return (
                             <Link 
                                 key={idx} 

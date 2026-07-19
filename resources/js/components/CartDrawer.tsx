@@ -1,6 +1,6 @@
+import { Link } from '@inertiajs/react';
+import { X, ShoppingBag, Calendar, AlertTriangle, ArrowRight, Plus, Trash2, Info } from 'lucide-react';
 import React from 'react';
-import { X, ShoppingBag, Calendar, CheckCircle2, AlertTriangle, ArrowRight, Plus, Trash2 } from 'lucide-react';
-import { Link, usePage } from '@inertiajs/react';
 
 interface CartDrawerProps {
     isOpen: boolean;
@@ -15,15 +15,16 @@ export default function CartDrawer({
     cartItems = [], 
     onRemoveItem
 }: CartDrawerProps) {
-    const { auth } = usePage().props as any;
-
-    if (!isOpen) return null;
+    if (!isOpen) {
+return null;
+}
 
     const hasItems = cartItems && cartItems.length > 0;
     
     // Subtotal and deposits sum
     let totalSubtotal = 0;
     let totalDeposit = 0;
+
     if (hasItems) {
         cartItems.forEach((item: any) => {
             const price = parseFloat(item.product?.discounted_price_per_day || item.product?.price_per_day || '0');
@@ -32,6 +33,7 @@ export default function CartDrawer({
             totalDeposit += dep;
         });
     }
+
     const grandTotal = totalSubtotal + totalDeposit;
 
     return (
@@ -211,7 +213,7 @@ export default function CartDrawer({
 function InfoIcon() {
     return (
         <span className="group relative inline-block cursor-help">
-            <CheckCircle2 className="w-3 h-3 text-white/40 group-hover:text-[#ffb6c5]" />
+            <Info className="w-3 h-3 text-white/40 group-hover:text-[#ffb6c5]" />
         </span>
     );
 }

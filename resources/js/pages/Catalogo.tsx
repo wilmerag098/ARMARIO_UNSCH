@@ -1,10 +1,6 @@
 import { Head, Link, usePage, router } from '@inertiajs/react';
-import PublicLayout from '@/layouts/PublicLayout';
-import Pagination from '@/components/Pagination';
 import {
-    Search,
     Heart,
-    Gem,
     Shirt,
     Award,
     Clock,
@@ -13,13 +9,14 @@ import {
     Calendar,
     MessageCircle,
     Star,
-    ChevronRight,
     SlidersHorizontal,
     CheckCircle2,
     X,
     AlertTriangle
 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
+import Pagination from '@/components/Pagination';
+import PublicLayout from '@/layouts/PublicLayout';
 
 interface Product {
     id: number;
@@ -69,8 +66,11 @@ export default function Catalogo({ products, categories }: CatalogProps) {
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const paymentStatus = params.get('payment_status');
+
         if (paymentStatus === 'failure') {
-            showToast('No se pudo procesar el pago de tu reserva. Por favor, vuelve a intentarlo.', 'error');
+            setTimeout(() => {
+                showToast('No se pudo procesar el pago de tu reserva. Por favor, vuelve a intentarlo.', 'error');
+            }, 0);
             
             // Limpiar parámetro de la URL sin recargar
             params.delete('payment_status');
@@ -81,36 +81,60 @@ export default function Catalogo({ products, categories }: CatalogProps) {
     }, []);
 
     // States for filtering
-    const [selectedCategory, setSelectedCategory] = useState<string>('all');
+    const [selectedCategory, setSelectedCategory] = useState<string>(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const catQuery = params.get('categoria');
+
+            if (catQuery) {
+                const matchedCat = categories.find(
+                    c => c.name.toLowerCase() === catQuery.toLowerCase() || c.slug.toLowerCase() === catQuery.toLowerCase()
+                );
+
+                if (matchedCat) {
+                    return String(matchedCat.id);
+                }
+            }
+        }
+
+        return 'all';
+    });
     const [priceMax, setPriceMax] = useState<number>(200);
     const [selectedSize, setSelectedSize] = useState<string>('all');
     const [selectedColor, setSelectedColor] = useState<string>('all');
     const [selectedAvailability, setSelectedAvailability] = useState<string>('all');
-    const [searchQuery, setSearchQuery] = useState<string>('');
+    const [searchQuery, setSearchQuery] = useState<string>(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+
+            return params.get('search') || '';
+        }
+
+        return '';
+    });
     const [sortBy, setSortBy] = useState<string>('popular');
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
     const [currentPage, setCurrentPage] = useState<number>(1);
     const itemsPerPage = 12;
 
-    // Reset page to 1 when filters change
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [selectedCategory, priceMax, selectedSize, selectedColor, selectedAvailability, searchQuery, sortBy]);
+    const [prevFilters, setPrevFilters] = useState({
+        selectedCategory, priceMax, selectedSize, selectedColor, selectedAvailability, searchQuery, sortBy
+    });
 
-    // Sync URL queries on mount (e.g. ?categoria=ternos)
-    useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        const catQuery = params.get('categoria');
-        if (catQuery) {
-            const matchedCat = categories.find(
-                c => c.name.toLowerCase() === catQuery.toLowerCase() || c.slug.toLowerCase() === catQuery.toLowerCase()
-            );
-            if (matchedCat) {
-                setSelectedCategory(String(matchedCat.id));
-            }
-        }
-    }, [categories]);
+    if (selectedCategory !== prevFilters.selectedCategory ||
+        priceMax !== prevFilters.priceMax ||
+        selectedSize !== prevFilters.selectedSize ||
+        selectedColor !== prevFilters.selectedColor ||
+        selectedAvailability !== prevFilters.selectedAvailability ||
+        searchQuery !== prevFilters.searchQuery ||
+        sortBy !== prevFilters.sortBy) {
+        
+        setPrevFilters({
+            selectedCategory, priceMax, selectedSize, selectedColor, selectedAvailability, searchQuery, sortBy
+        });
+        setCurrentPage(1);
+    }
 
     // Total active items
     const totalItems = products.length;
@@ -130,6 +154,7 @@ export default function Catalogo({ products, categories }: CatalogProps) {
                 rating: 4 + (idx % 2),
                 reviews: 5 + (idx * 3) % 25
             };
+
             return acc;
         }, {} as Record<number, { badge: string; badgeColor: string; rating: number; reviews: number }>);
     }, [products]);
@@ -147,8 +172,10 @@ export default function Catalogo({ products, categories }: CatalogProps) {
     const handleToggleFav = (productId: number) => {
         if (!auth?.user) {
             router.get('/login');
+
             return;
         }
+
         router.post(`/favoritos/toggle/${productId}`, {}, {
             preserveScroll: true
         });
@@ -175,6 +202,7 @@ export default function Catalogo({ products, categories }: CatalogProps) {
         // Price range filter
         result = result.filter(prod => {
             const price = prod.discount_percent > 0 ? Number(prod.discounted_price_per_day) : Number(prod.price_per_day);
+
             return price <= priceMax;
         });
 
@@ -192,6 +220,7 @@ export default function Catalogo({ products, categories }: CatalogProps) {
                 const matchesSpecs = prod.specifications && Array.isArray(prod.specifications) && prod.specifications.some(spec => 
                     spec && spec.label && spec.label.toLowerCase() === 'color' && spec.value && spec.value.toLowerCase() === selectedColor.toLowerCase()
                 );
+
                 return matchesColorsArray || matchesSpecs;
             });
         }
@@ -200,6 +229,7 @@ export default function Catalogo({ products, categories }: CatalogProps) {
         if (selectedAvailability !== 'all') {
             result = result.filter(prod => {
                 const hasAvailable = prod.inventories?.some(inv => inv.status === 'available');
+
                 return selectedAvailability === 'available' ? hasAvailable : !hasAvailable;
             });
         }
@@ -209,12 +239,14 @@ export default function Catalogo({ products, categories }: CatalogProps) {
             result.sort((a, b) => {
                 const pA = a.discount_percent > 0 ? Number(a.discounted_price_per_day) : Number(a.price_per_day);
                 const pB = b.discount_percent > 0 ? Number(b.discounted_price_per_day) : Number(b.price_per_day);
+
                 return pA - pB;
             });
         } else if (sortBy === 'price_desc') {
             result.sort((a, b) => {
                 const pA = a.discount_percent > 0 ? Number(a.discounted_price_per_day) : Number(a.price_per_day);
                 const pB = b.discount_percent > 0 ? Number(b.discounted_price_per_day) : Number(b.price_per_day);
+
                 return pB - pA;
             });
         }

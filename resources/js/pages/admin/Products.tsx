@@ -1,9 +1,9 @@
-import React, { useState, useRef } from 'react';
 import { Head, useForm, router } from '@inertiajs/react';
-import AdminLayout from '@/layouts/AdminLayout';
-import { Plus, Tag, Image, ChevronDown, Check, ArrowLeft, Upload, Loader2, X, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Plus, Tag, Image, ChevronDown, Check, ArrowLeft, Loader2, X, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
+import React, { useState, useRef } from 'react';
 import Pagination from '@/components/Pagination';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import AdminLayout from '@/layouts/AdminLayout';
 
 interface Product {
     id: number;
@@ -106,6 +106,7 @@ export default function Products({ products, categories }: ProductsProps) {
         setData('existing_images', newExisting);
 
         const newPreviews = [...imagePreviews];
+
         if (file) {
             const reader = new FileReader();
             reader.onloadend = () => {
@@ -139,21 +140,26 @@ export default function Products({ products, categories }: ProductsProps) {
         
         // Populate existing images
         const existingImgs: (string | null)[] = [...(product.images || [])];
+
         if (existingImgs.length === 0 && product.image_url) {
             existingImgs.push(product.image_url);
         }
+
         while (existingImgs.length < 5) {
             existingImgs.push(null);
         }
         
         // Populate previews
         const previews: (string | null)[] = [...(product.images || [])];
+
         if (previews.length === 0 && product.image_url) {
             previews.push(product.image_url);
         }
+
         while (previews.length < 5) {
             previews.push(null);
         }
+
         setImagePreviews(previews);
 
         // Find primary index
@@ -268,7 +274,8 @@ export default function Products({ products, categories }: ProductsProps) {
                     </div>
 
                     <div className="bg-white border border-[#ebd7da] rounded-2xl overflow-hidden shadow-sm">
-                        <div className="overflow-x-auto">
+                        {/* Desktop Table View */}
+                        <div className="hidden md:block overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="border-b border-[#ebd7da] text-[#571e26] bg-[#fcf8f9] text-xs uppercase tracking-wider">
@@ -351,7 +358,7 @@ export default function Products({ products, categories }: ProductsProps) {
                                         ))
                                     ) : (
                                         <tr>
-                                            <td colSpan={6} className="px-6 py-10 text-center text-[#571e26]/70">
+                                            <td colSpan={7} className="px-6 py-10 text-center text-[#571e26]/70">
                                                 No hay productos registrados en esta consola.
                                             </td>
                                         </tr>
@@ -359,6 +366,84 @@ export default function Products({ products, categories }: ProductsProps) {
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* Mobile Cards View */}
+                        <div className="block md:hidden divide-y divide-[#f3e8ea] text-sm text-[#290a0f]">
+                            {products.length > 0 ? (
+                                currentProducts.map((product) => (
+                                    <div key={product.id} className="p-5 space-y-3 hover:bg-[#fdf9fa] transition-colors">
+                                        <div className="flex items-start gap-4">
+                                            {product.image_url ? (
+                                                <img 
+                                                    src={product.image_url} 
+                                                    alt={product.name} 
+                                                    className="w-16 h-20 object-cover rounded-xl border border-[#ebd7da] bg-[#faf6f7] shrink-0"
+                                                    onError={(e) => {
+                                                        (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1593030761757-71fae45fa0e7?q=80&w=100';
+                                                    }}
+                                                />
+                                            ) : (
+                                                <div className="w-16 h-20 rounded-xl bg-[#f3e8ea] flex items-center justify-center text-[#94344c] shrink-0">
+                                                    <Tag className="h-6 w-6" />
+                                                </div>
+                                            )}
+                                            <div className="min-w-0 flex-grow">
+                                                <div className="font-bold text-[#1a050a] leading-tight text-sm">{product.name}</div>
+                                                <div className="mt-1">
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-[#fdf2f4] text-[#94344c] border border-[#ebd7da]">
+                                                        {product.category?.name || 'Sin Categoría'}
+                                                    </span>
+                                                </div>
+                                                <div className="mt-2 flex items-center gap-2.5">
+                                                    {product.status === 'active' ? (
+                                                        <span className="inline-flex items-center px-2 py-0.25 rounded-md text-[9px] font-black uppercase bg-green-50 text-green-700 border border-green-200">
+                                                            Activo
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center px-2 py-0.25 rounded-md text-[9px] font-black uppercase bg-stone-105 text-stone-600 border border-stone-200">
+                                                            Inactivo
+                                                        </span>
+                                                    )}
+                                                    <span className="text-[10px] text-[#571e26]/60 font-extrabold uppercase tracking-wider">{product.inventories_count ?? 0} Unidades</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex justify-between items-center bg-[#fcf8f9] px-4 py-3 rounded-2xl text-xs font-semibold">
+                                            <div>
+                                                <span className="text-stone-400 block text-[9px] uppercase font-bold tracking-wider">Precio/Día</span>
+                                                <span className="font-extrabold text-[#1a050a] text-sm">S/ {Number(product.price_per_day).toFixed(2)}</span>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-stone-400 block text-[9px] uppercase font-bold tracking-wider">Garantía</span>
+                                                <span className="font-extrabold text-[#571e26] text-sm">S/ {Number(product.security_deposit).toFixed(2)}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex justify-end gap-2.5 pt-2">
+                                            <button 
+                                                onClick={() => handleEdit(product)}
+                                                className="text-xs bg-[#fdf2f4] hover:bg-[#f3e8ea] text-[#94344c] border border-[#ebd7da] px-4 py-2.5 rounded-xl font-bold transition-all cursor-pointer flex-1"
+                                            >
+                                                Editar
+                                            </button>
+                                            <button 
+                                                onClick={() => triggerDelete(product)}
+                                                className="text-xs bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 p-2.5 rounded-xl font-bold transition-all cursor-pointer flex items-center justify-center"
+                                                title="Eliminar prenda"
+                                            >
+                                                <Trash2 className="h-4.5 w-4.5" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="p-8 text-center text-[#571e26]/70 font-semibold">
+                                    No hay productos registrados en esta consola.
+                                </div>
+                            )}
+                        </div>
+
                         <Pagination 
                             currentPage={currentPage}
                             totalPages={totalPages}
@@ -424,6 +509,7 @@ export default function Products({ products, categories }: ProductsProps) {
                                         {[0, 1, 2, 3, 4].map((index) => {
                                             const preview = imagePreviews[index];
                                             const isPrimary = data.primary_image_index === index;
+
                                             return (
                                                 <div 
                                                     key={index}
@@ -435,7 +521,10 @@ export default function Products({ products, categories }: ProductsProps) {
                                                                 : 'border-dashed border-[#571e26] hover:border-[#ffb6c5]'
                                                     }`}
                                                     onClick={(e) => {
-                                                        if ((e.target as HTMLElement).closest('.action-btn')) return;
+                                                        if ((e.target as HTMLElement).closest('.action-btn')) {
+return;
+}
+
                                                         fileRefs.current[index]?.click();
                                                     }}
                                                 >
@@ -474,12 +563,17 @@ export default function Products({ products, categories }: ProductsProps) {
                                                     )}
                                                     <input 
                                                         type="file" 
-                                                        ref={(el) => { fileRefs.current[index] = el; }} 
+                                                        ref={(el) => {
+ fileRefs.current[index] = el; 
+}} 
                                                         className="hidden" 
                                                         accept="image/*" 
                                                         onChange={(e) => {
                                                             const file = e.target.files?.[0];
-                                                            if (file) handleImageSlotChange(index, file);
+
+                                                            if (file) {
+handleImageSlotChange(index, file);
+}
                                                         }}
                                                     />
                                                 </div>
@@ -577,6 +671,7 @@ export default function Products({ products, categories }: ProductsProps) {
                                             <div className="flex flex-wrap gap-3">
                                                 {['XS', 'S', 'M', 'L', 'XL'].map((size) => {
                                                     const isSelected = data.sizes.includes(size);
+
                                                     return (
                                                         <button
                                                             type="button"
@@ -706,6 +801,7 @@ export default function Products({ products, categories }: ProductsProps) {
                                                 e.preventDefault();
                                                 const target = e.target as HTMLInputElement;
                                                 const val = target.value.trim();
+
                                                 if (val && !data.colors.includes(val)) {
                                                     setData('colors', [...data.colors, val]);
                                                     target.value = '';
@@ -718,6 +814,7 @@ export default function Products({ products, categories }: ProductsProps) {
                                         onClick={() => {
                                             const input = document.getElementById('new-color-input') as HTMLInputElement;
                                             const val = input?.value.trim();
+
                                             if (val && !data.colors.includes(val)) {
                                                 setData('colors', [...data.colors, val]);
                                                 input.value = '';

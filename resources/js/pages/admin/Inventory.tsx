@@ -1,9 +1,6 @@
-import React, { useState } from 'react';
 import { Head, useForm, router } from '@inertiajs/react';
-import AdminLayout from '@/layouts/AdminLayout';
 import {
     Plus,
-    CheckCircle2,
     AlertTriangle,
     HelpCircle,
     XCircle,
@@ -21,7 +18,9 @@ import {
     Info,
     RefreshCw
 } from 'lucide-react';
+import React, { useState } from 'react';
 import Pagination from '@/components/Pagination';
+import AdminLayout from '@/layouts/AdminLayout';
 
 interface Category {
     id: number;
@@ -57,9 +56,12 @@ export default function Inventory({ inventories, products }: InventoryProps) {
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
 
-    React.useEffect(() => {
+    const [prevFilters, setPrevFilters] = useState({ searchTerm, statusFilter, sizeFilter });
+
+    if (searchTerm !== prevFilters.searchTerm || statusFilter !== prevFilters.statusFilter || sizeFilter !== prevFilters.sizeFilter) {
+        setPrevFilters({ searchTerm, statusFilter, sizeFilter });
         setCurrentPage(1);
-    }, [searchTerm, statusFilter, sizeFilter]);
+    }
 
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -89,6 +91,7 @@ export default function Inventory({ inventories, products }: InventoryProps) {
 
     const handleCreateSKU = () => {
         const generated = generateSKU(createForm.data.product_id, createForm.data.size);
+
         if (generated) {
             createForm.setData('sku', generated);
             showToast('SKU generado automáticamente', 'success');
@@ -99,6 +102,7 @@ export default function Inventory({ inventories, products }: InventoryProps) {
 
     const handleEditSKU = () => {
         const generated = generateSKU(editForm.data.product_id, editForm.data.size);
+
         if (generated) {
             editForm.setData('sku', generated);
             showToast('SKU generado automáticamente', 'success');
@@ -109,12 +113,16 @@ export default function Inventory({ inventories, products }: InventoryProps) {
 
     const generateSKU = (productId: string, size: string) => {
         const prod = products.find(p => p.id.toString() === productId);
-        if (!prod || !size) return null;
+
+        if (!prod || !size) {
+return null;
+}
 
         // Take first 3 letters of name and remove non-letters
         const prefix = prod.name.substring(0, 3).toUpperCase().replace(/[^A-Z]/g, 'X');
         const sizeCode = size.toUpperCase();
         const randNum = Math.floor(1000 + Math.random() * 9000);
+
         return `${prefix}-${sizeCode}-${randNum}`;
     };
 
@@ -134,7 +142,11 @@ export default function Inventory({ inventories, products }: InventoryProps) {
 
     const handleEditSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedItem) return;
+
+        if (!selectedItem) {
+return;
+}
+
         editForm.put(`/admin/inventario/${selectedItem.id}`, {
             onSuccess: () => {
                 editForm.reset();
@@ -161,7 +173,11 @@ export default function Inventory({ inventories, products }: InventoryProps) {
 
     const handleDeleteSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedItem) return;
+
+        if (!selectedItem) {
+return;
+}
+
         router.delete(`/admin/inventario/${selectedItem.id}`, {
             onSuccess: () => {
                 setIsDeleteModalOpen(false);
@@ -338,7 +354,8 @@ export default function Inventory({ inventories, products }: InventoryProps) {
 
             {/* Table */}
             <div className="bg-white border border-[#ebd7da] rounded-2xl overflow-hidden shadow-sm">
-                <div className="overflow-x-auto">
+                {/* Desktop View */}
+                <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="border-b border-[#ebd7da] text-[#571e26] bg-[#fcf8f9] text-xs uppercase tracking-wider">
@@ -456,6 +473,94 @@ export default function Inventory({ inventories, products }: InventoryProps) {
                         </tbody>
                     </table>
                 </div>
+
+                {/* Mobile View */}
+                <div className="block md:hidden divide-y divide-[#f3e8ea] text-sm text-[#290a0f]">
+                    {filteredInventories.length > 0 ? (
+                        currentInventories.map((item) => (
+                            <div key={item.id} className="p-5 space-y-3 hover:bg-[#fdf9fa] transition-colors">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-lg overflow-hidden border border-[#ebd7da] bg-[#faf6f7] flex items-center justify-center shrink-0">
+                                        <img
+                                            src={item.product?.image_url || 'https://images.unsplash.com/photo-1593030761757-71fae45fa0e7?q=80&w=800'}
+                                            alt={item.product?.name}
+                                            className="w-full h-full object-cover"
+                                        />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <div className="font-semibold text-[#1a050a] truncate leading-tight">{item.product?.name || 'Prenda Desconocida'}</div>
+                                        <div className="text-xs text-[#571e26]/70 truncate mt-0.5">{item.sku} | Talla {item.size}</div>
+                                    </div>
+                                    <div className="shrink-0">
+                                        {getStatusBadge(item.status)}
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-[#fcf8f9]">
+                                    {/* Botón rápido Lavandería -> Disponible */}
+                                    {item.status === 'maintenance' && (
+                                        <button
+                                            onClick={() => handleUpdateStatus(item, 'available')}
+                                            className="inline-flex items-center justify-center gap-1 text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 py-2 px-3 rounded-lg transition-all cursor-pointer font-bold flex-1"
+                                            title="Confirmar Limpieza"
+                                        >
+                                            <Check className="h-3 w-3" />
+                                            Limpieza Completada
+                                        </button>
+                                    )}
+
+                                    {/* Botón rápido Disponible -> Dañado */}
+                                    {item.status === 'available' && (
+                                        <button
+                                            onClick={() => handleUpdateStatus(item, 'damaged')}
+                                            className="inline-flex items-center justify-center gap-1 text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 py-2 px-3 rounded-lg transition-all cursor-pointer font-bold flex-1"
+                                            title="Reportar Daño"
+                                        >
+                                            <AlertTriangle className="h-3 w-3" />
+                                            Reportar Daño
+                                        </button>
+                                    )}
+
+                                    {/* Botón rápido Dañado -> Lavandería */}
+                                    {item.status === 'damaged' && (
+                                        <button
+                                            onClick={() => handleUpdateStatus(item, 'maintenance')}
+                                            className="inline-flex items-center justify-center gap-1 text-xs bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 py-2 px-3 rounded-lg transition-all cursor-pointer font-bold flex-1"
+                                            title="Enviar a Mantenimiento"
+                                        >
+                                            <RefreshCw className="h-3 w-3 animate-spin" />
+                                            Reparar
+                                        </button>
+                                    )}
+
+                                    {/* Botón Modificar */}
+                                    <button
+                                        onClick={() => openEditModal(item)}
+                                        className="p-2 bg-[#fdf2f4] hover:bg-[#f3e8ea] text-[#94344c] border border-[#ebd7da] rounded-lg transition-all cursor-pointer flex items-center justify-center"
+                                        title="Modificar item"
+                                    >
+                                        <Edit2 className="h-4 w-4" />
+                                    </button>
+
+                                    {/* Botón Eliminar */}
+                                    <button
+                                        onClick={() => openDeleteModal(item)}
+                                        className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg transition-all cursor-pointer flex items-center justify-center"
+                                        title="Eliminar item"
+                                        disabled={item.status === 'rented'}
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        ))
+                    ) : (
+                        <div className="p-8 text-center text-[#571e26]/75 font-semibold">
+                            No se encontraron ejemplares físicos con los filtros seleccionados.
+                        </div>
+                    )}
+                </div>
+
                 <Pagination 
                     currentPage={currentPage}
                     totalPages={totalPages}

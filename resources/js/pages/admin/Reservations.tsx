@@ -1,9 +1,6 @@
-import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
-import AdminLayout from '@/layouts/AdminLayout';
 import {
     Calendar,
-    Tag,
     ChevronDown,
     Search,
     Filter,
@@ -14,14 +11,13 @@ import {
     Shirt,
     Info,
     User,
-    Mail,
-    TrendingUp,
-    ShieldAlert,
     Eye,
     Save
 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import React, { useState } from 'react';
 import Pagination from '@/components/Pagination';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import AdminLayout from '@/layouts/AdminLayout';
 
 interface UserInfo {
     name: string;
@@ -77,8 +73,10 @@ export default function Reservations({ reservations }: ReservationsProps) {
     const itemsPerPage = 10;
 
     React.useEffect(() => {
-        setCurrentPage(1);
-    }, [searchTerm, statusFilter, timeFilter]);
+        if (currentPage !== 1) {
+            setCurrentPage(1);
+        }
+    }, [searchTerm, statusFilter, timeFilter, currentPage]);
 
     const showToast = (message: string, type: 'success' | 'error' = 'success') => {
         setToast({ message, type });
@@ -122,7 +120,9 @@ export default function Reservations({ reservations }: ReservationsProps) {
     };
 
     const isOverdue = (res: Reservation) => {
-        if (!['entregada', 'en_uso'].includes(res.status)) return false;
+        if (!['entregada', 'en_uso'].includes(res.status)) {
+return false;
+}
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -135,6 +135,7 @@ export default function Reservations({ reservations }: ReservationsProps) {
 
     const isToday = (dateStr: string) => {
         const today = new Date().toISOString().split('T')[0];
+
         return dateStr === today;
     };
 
@@ -147,6 +148,7 @@ export default function Reservations({ reservations }: ReservationsProps) {
         const matchesStatus = statusFilter === 'all' || res.status === statusFilter;
 
         let matchesTime = true;
+
         if (timeFilter === 'today_deliveries') {
             matchesTime = isToday(res.start_date);
         } else if (timeFilter === 'today_returns') {
@@ -252,6 +254,7 @@ export default function Reservations({ reservations }: ReservationsProps) {
 
     const formatDate = (dateStr: string) => {
         const d = new Date(dateStr + 'T00:00:00');
+
         return d.toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' });
     };
 
@@ -339,7 +342,8 @@ export default function Reservations({ reservations }: ReservationsProps) {
 
             {/* Table */}
             <div className="bg-white border border-[#ebd7da] rounded-2xl overflow-hidden shadow-sm">
-                <div className="overflow-x-auto">
+                {/* Desktop View */}
+                <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="border-b border-[#ebd7da] text-[#571e26] bg-[#fcf8f9] text-xs uppercase tracking-wider">
@@ -481,6 +485,122 @@ export default function Reservations({ reservations }: ReservationsProps) {
                         </tbody>
                     </table>
                 </div>
+
+                {/* Mobile View */}
+                <div className="block md:hidden divide-y divide-[#f3e8ea] text-sm text-[#290a0f]">
+                    {filteredReservations.length > 0 ? (
+                        currentReservations.map((res) => (
+                            <div key={res.id} className={`p-5 space-y-3 hover:bg-[#fdf9fa] transition-colors ${isOverdue(res) ? 'bg-red-50/30' : ''}`}>
+                                <div className="flex justify-between items-center">
+                                    <span className="font-mono font-bold text-[#94344c] tracking-wider text-xs">{res.order_number}</span>
+                                    {getStatusBadge(res)}
+                                </div>
+
+                                <div className="text-xs space-y-1">
+                                    <div className="font-bold text-[#1a050a]">{res.user?.name || 'Estudiante Desconocido'}</div>
+                                    <div className="text-stone-500 text-[11px]">{res.user?.email || '-'}</div>
+                                </div>
+
+                                <div className="bg-[#fcf8f9] px-4 py-3 rounded-2xl text-xs space-y-1.5 font-semibold text-[#571e26]">
+                                    <div className="flex justify-between">
+                                        <span className="text-stone-400 font-bold uppercase text-[9px] tracking-wider">Inicio:</span>
+                                        <span className="text-[#1a050a] font-bold">{formatDate(res.start_date)}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-stone-400 font-bold uppercase text-[9px] tracking-wider">Devolver:</span>
+                                        <span className={isOverdue(res) ? 'text-red-600 font-extrabold' : 'text-[#1a050a] font-bold'}>{formatDate(res.end_date)}</span>
+                                    </div>
+                                    <div className="border-t border-[#ebd7da]/40 pt-1.5 flex justify-between font-bold">
+                                        <span className="text-stone-400 uppercase text-[9px] tracking-wider">Total Cobrado:</span>
+                                        <span className="text-[#1a050a] text-sm font-black">S/ {Number(res.total_amount).toFixed(2)}</span>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-[#fcf8f9]/50">
+                                    {/* Context actions */}
+                                    {res.status === 'pendiente' && (
+                                        <>
+                                            <button
+                                                onClick={() => handleStatusUpdateDirect(res, 'confirmada')}
+                                                className="inline-flex items-center justify-center gap-1 text-[11px] bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 py-2 px-3 rounded-xl transition-all font-bold flex-1 cursor-pointer"
+                                                title="Confirmar Reserva"
+                                            >
+                                                <Check className="h-3.5 w-3.5" />
+                                                Aprobar
+                                            </button>
+                                            <button
+                                                onClick={() => handleStatusUpdateDirect(res, 'rechazada')}
+                                                className="inline-flex items-center justify-center gap-1 text-[11px] bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 py-2 px-3 rounded-xl transition-all font-bold flex-1 cursor-pointer"
+                                                title="Rechazar Reserva"
+                                            >
+                                                <X className="h-3.5 w-3.5" />
+                                                Rechazar
+                                            </button>
+                                        </>
+                                    )}
+
+                                    {res.status === 'confirmada' && (
+                                        <button
+                                            onClick={() => handleStatusUpdateDirect(res, 'preparando')}
+                                            className="inline-flex items-center justify-center gap-1 text-[11px] bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 py-2.5 px-3 rounded-xl transition-all font-bold flex-1 cursor-pointer"
+                                            title="Comenzar preparación"
+                                        >
+                                            <Clock className="h-3.5 w-3.5" />
+                                            Preparar
+                                        </button>
+                                    )}
+
+                                    {res.status === 'preparando' && (
+                                        <button
+                                            onClick={() => handleStatusUpdateDirect(res, 'entregada')}
+                                            className="inline-flex items-center justify-center gap-1 text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 py-2.5 px-3 rounded-xl transition-all font-bold flex-1 cursor-pointer animate-pulse"
+                                            title="Prendas listas en el vestuario"
+                                        >
+                                            <Check className="h-3.5 w-3.5" />
+                                            Lista p/ Retiro
+                                        </button>
+                                    )}
+
+                                    {res.status === 'entregada' && (
+                                        <button
+                                            onClick={() => handleStatusUpdateDirect(res, 'en_uso')}
+                                            className="inline-flex items-center justify-center gap-1 text-[11px] bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 py-2.5 px-3 rounded-xl transition-all font-bold flex-1 cursor-pointer"
+                                            title="Entregar vestuario físico"
+                                        >
+                                            <Shirt className="h-3.5 w-3.5" />
+                                            Entregar
+                                        </button>
+                                    )}
+
+                                    {res.status === 'en_uso' && (
+                                        <button
+                                            onClick={() => handleStatusUpdateDirect(res, 'devuelta')}
+                                            className="inline-flex items-center justify-center gap-1 text-[11px] bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 py-2.5 px-3 rounded-xl transition-all font-bold flex-1 cursor-pointer"
+                                            title="Recibir devolución y enviar prendas a lavandería"
+                                        >
+                                            <Check className="h-3.5 w-3.5" />
+                                            Devuelta / Lavado
+                                        </button>
+                                    )}
+
+                                    {/* Detalle / Gestionar Completo */}
+                                    <button
+                                        onClick={() => handleManage(res)}
+                                        className="p-2 bg-[#fdf2f4] hover:bg-[#f3e8ea] text-[#94344c] border border-[#ebd7da] rounded-xl font-bold transition-all cursor-pointer flex items-center justify-center"
+                                        title="Gestionar detalles"
+                                    >
+                                        <Eye className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        ))
+                    ) : (
+                        <div className="p-8 text-center text-[#571e26]/70 font-semibold">
+                            No se encontraron reservas con los criterios de búsqueda.
+                        </div>
+                    )}
+                </div>
+
                 <Pagination 
                     currentPage={currentPage}
                     totalPages={totalPages}

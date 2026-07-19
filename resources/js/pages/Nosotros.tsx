@@ -1,14 +1,13 @@
-import { Head, Link, usePage } from '@inertiajs/react';
-import PublicLayout from '@/layouts/PublicLayout';
+import { Head, usePage } from '@inertiajs/react';
 import { 
     Heart, 
     Sparkles, 
     Users, 
     Award, 
     Layers, 
-    Target, 
-    Bookmark
+    Target
 } from 'lucide-react';
+import PublicLayout from '@/layouts/PublicLayout';
 
 export default function Nosotros() {
     const { auth } = usePage().props;

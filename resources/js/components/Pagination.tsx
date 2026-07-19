@@ -1,5 +1,5 @@
-import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import React from 'react';
 
 interface PaginationProps {
     currentPage: number;
@@ -9,7 +9,9 @@ interface PaginationProps {
 }
 
 export default function Pagination({ currentPage, totalPages, onPageChange, theme = 'light' }: PaginationProps) {
-    if (totalPages <= 1) return null;
+    if (totalPages <= 1) {
+return null;
+}
 
     // Generate page numbers
     const getPageNumbers = () => {
@@ -28,6 +30,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange, them
                 pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
             }
         }
+
         return pages;
     };
 
@@ -91,6 +94,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange, them
                         </span>
                     );
                 }
+
                 return (
                     <button
                         type="button"

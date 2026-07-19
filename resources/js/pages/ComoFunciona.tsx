@@ -1,16 +1,14 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import PublicLayout from '@/layouts/PublicLayout';
 import { 
     Shirt, 
     Calendar, 
     Truck, 
     Sparkles, 
     HelpCircle, 
-    ChevronDown, 
-    ShieldAlert, 
-    Clock
+    ChevronDown
 } from 'lucide-react';
 import { useState } from 'react';
+import PublicLayout from '@/layouts/PublicLayout';
 
 interface FAQItem {
     question: string;
@@ -141,6 +139,7 @@ export default function ComoFunciona() {
                         <div className="space-y-3.5">
                             {faqs.map((faq, idx) => {
                                 const isOpen = openFaq === idx;
+
                                 return (
                                     <div 
                                         key={idx} 

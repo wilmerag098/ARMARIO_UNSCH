@@ -1,6 +1,4 @@
-import React, { useState, useRef } from 'react';
 import { Head, useForm, router } from '@inertiajs/react';
-import AdminLayout from '@/layouts/AdminLayout';
 import {
     ShieldAlert,
     UserCheck,
@@ -26,8 +24,10 @@ import {
     CreditCard,
     Key
 } from 'lucide-react';
+import React, { useState, useRef } from 'react';
 
 import Pagination from '@/components/Pagination';
+import AdminLayout from '@/layouts/AdminLayout';
 
 interface User {
     id: number;
@@ -118,6 +118,7 @@ export default function Users({ users }: UsersProps) {
 
     const handleCreateFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
+
         if (file) {
             createForm.setData('avatar', file);
             const reader = new FileReader();
@@ -130,6 +131,7 @@ export default function Users({ users }: UsersProps) {
 
     const handleEditFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
+
         if (file) {
             editForm.setData('avatar', file);
             const reader = new FileReader();
@@ -158,7 +160,10 @@ export default function Users({ users }: UsersProps) {
 
     const handleEditUserSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedUser) return;
+
+        if (!selectedUser) {
+return;
+}
 
         editForm.post(`/admin/usuarios/${selectedUser.id}`, {
             forceFormData: true,
@@ -177,7 +182,10 @@ export default function Users({ users }: UsersProps) {
 
     const handlePasswordResetSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedUser) return;
+
+        if (!selectedUser) {
+return;
+}
 
         passwordResetForm.patch(`/admin/usuarios/${selectedUser.id}/reset-password`, {
             onSuccess: () => {
@@ -205,7 +213,10 @@ export default function Users({ users }: UsersProps) {
     };
 
     const handleDeleteUser = () => {
-        if (!selectedUser) return;
+        if (!selectedUser) {
+return;
+}
+
         router.delete(`/admin/usuarios/${selectedUser.id}`, {
             onSuccess: () => {
                 setIsDeleteModalOpen(false);
@@ -300,7 +311,8 @@ export default function Users({ users }: UsersProps) {
             </div>
 
             <div className="bg-white border border-[#ebd7da] rounded-2xl overflow-hidden shadow-sm">
-                <div className="overflow-x-auto">
+                {/* Desktop View */}
+                <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="border-b border-[#ebd7da] text-[#571e26] bg-[#fcf8f9] text-xs uppercase tracking-wider">
@@ -449,6 +461,130 @@ export default function Users({ users }: UsersProps) {
                         </tbody>
                     </table>
                 </div>
+
+                {/* Mobile View */}
+                <div className="block md:hidden divide-y divide-[#f3e8ea] text-sm text-[#290a0f]">
+                    {users.length > 0 ? (
+                        currentUsers.map((user) => (
+                            <div key={user.id} className="p-5 space-y-3 hover:bg-[#fdf9fa] transition-colors">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full overflow-hidden border border-[#ebd7da] bg-[#faf6f7] flex items-center justify-center shrink-0">
+                                        <img
+                                            src={user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=571e26&color=ffb6c5&bold=true`}
+                                            alt={user.name}
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => {
+                                                (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=571e26&color=ffb6c5&bold=true`;
+                                            }}
+                                        />
+                                    </div>
+                                    <div className="min-w-0 flex-grow text-left">
+                                        <div className="font-bold text-[#1a050a] leading-tight">{user.name} {user.last_name || ''}</div>
+                                        <div className="text-stone-500 text-[11px] truncate mt-0.5">{user.email}</div>
+                                    </div>
+                                    <div className="shrink-0 text-right">
+                                        {user.role === 'admin' ? (
+                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-200">
+                                                Admin
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#fdf2f4] text-[#94344c] border border-[#ebd7da]">
+                                                Estud.
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="bg-[#fcf8f9] px-4 py-3 rounded-2xl text-xs space-y-1.5 font-semibold text-[#571e26]">
+                                    <div className="flex justify-between">
+                                        <span className="text-stone-400 font-bold uppercase text-[9px] tracking-wider">Código / DNI:</span>
+                                        <span className="text-[#1a050a] font-mono">{user.university_id || user.dni || '-'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-stone-400 font-bold uppercase text-[9px] tracking-wider">Reservas Activas:</span>
+                                        <span>
+                                            {user.active_reservations_count !== undefined ? (
+                                                user.active_reservations_count > 0 ? (
+                                                    <span className="font-bold text-[#94344c]">{user.active_reservations_count} activas</span>
+                                                ) : (
+                                                    <span className="text-stone-400">Ninguna</span>
+                                                )
+                                            ) : (
+                                                '-'
+                                            )}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-stone-400 font-bold uppercase text-[9px] tracking-wider">Estado Cuenta:</span>
+                                        <span>
+                                            {user.status === 'active' && (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.25 rounded-md text-[9px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                    Activo
+                                                </span>
+                                            )}
+                                            {user.status === 'inactive' && (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.25 rounded-md text-[9px] font-black uppercase bg-stone-50 text-stone-700 border border-stone-200">
+                                                    Inactivo
+                                                </span>
+                                            )}
+                                            {user.status === 'suspended' && (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.25 rounded-md text-[9px] font-black uppercase bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
+                                                    Suspendido
+                                                </span>
+                                            )}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-[#fcf8f9]/50">
+                                    <button
+                                        onClick={() => openDetailModal(user)}
+                                        className="p-2.5 bg-[#fdf2f4] hover:bg-[#f3e8ea] text-[#94344c] border border-[#ebd7da] rounded-xl font-bold transition-all cursor-pointer flex items-center justify-center"
+                                        title="Ver ficha completa"
+                                    >
+                                        <Eye className="h-4.5 w-4.5" />
+                                    </button>
+                                    <button
+                                        onClick={() => openEditModal(user)}
+                                        className="p-2.5 bg-[#fdf2f4] hover:bg-[#f3e8ea] text-[#94344c] border border-[#ebd7da] rounded-xl font-bold transition-all cursor-pointer flex items-center justify-center"
+                                        title="Modificar usuario"
+                                    >
+                                        <Edit2 className="h-4.5 w-4.5" />
+                                    </button>
+                                    <button
+                                        onClick={() => openResetPasswordModal(user)}
+                                        className="p-2.5 bg-[#fdf2f4] hover:bg-[#f3e8ea] text-[#94344c] border border-[#ebd7da] rounded-xl font-bold transition-all cursor-pointer flex items-center justify-center"
+                                        title="Restablecer contraseña"
+                                    >
+                                        <Lock className="h-4.5 w-4.5" />
+                                    </button>
+                                    <button
+                                        onClick={() => handleToggleStatus(user)}
+                                        className={`p-2.5 border rounded-xl transition-all cursor-pointer flex items-center justify-center ${user.status === 'active'
+                                                ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
+                                                : 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+                                            }`}
+                                        title={user.status === 'active' ? 'Suspender cuenta' : 'Activar cuenta'}
+                                    >
+                                        {user.status === 'active' ? <Ban className="h-4.5 w-4.5" /> : <CheckCircle className="h-4.5 w-4.5" />}
+                                    </button>
+                                    <button
+                                        onClick={() => openDeleteModal(user)}
+                                        className="p-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl font-bold transition-all cursor-pointer flex items-center justify-center flex-1"
+                                        title="Eliminar usuario"
+                                    >
+                                        <Trash2 className="h-4.5 w-4.5" />
+                                    </button>
+                                </div>
+                            </div>
+                        ))
+                    ) : (
+                        <div className="p-8 text-center text-[#571e26]/70 font-semibold">
+                            No hay usuarios registrados.
+                        </div>
+                    )}
+                </div>
+
                 <Pagination 
                     currentPage={currentPage}
                     totalPages={totalPages}
@@ -624,7 +760,9 @@ export default function Users({ users }: UsersProps) {
                             </div>
 
                             <div className="p-5 border-t border-[#290a0f] flex justify-end gap-3 bg-[#290a0f]/40">
-                                <button type="button" onClick={() => { setIsCreateModalOpen(false); createForm.reset(); setCreateAvatarPreview(null); }} className="px-5 py-2.5 text-xs font-bold border border-[#ffb6c5]/15 hover:border-[#94344c] text-[#d2a9b1] hover:text-[#ffb6c5] hover:bg-[#290a0f] rounded-xl transition-all cursor-pointer" disabled={createForm.processing}>Cancelar</button>
+                                <button type="button" onClick={() => {
+ setIsCreateModalOpen(false); createForm.reset(); setCreateAvatarPreview(null); 
+}} className="px-5 py-2.5 text-xs font-bold border border-[#ffb6c5]/15 hover:border-[#94344c] text-[#d2a9b1] hover:text-[#ffb6c5] hover:bg-[#290a0f] rounded-xl transition-all cursor-pointer" disabled={createForm.processing}>Cancelar</button>
                                 <button type="submit" className="bg-[#94344c] hover:bg-[#a63f57] text-[#fdeaea] font-bold text-xs px-7 py-2.5 rounded-xl transition-colors shadow-lg shadow-[#94344c]/10 cursor-pointer flex items-center gap-2" disabled={createForm.processing}>
                                     <Save className="h-4 w-4" />
                                     <span>Guardar administrador</span>
@@ -862,7 +1000,9 @@ export default function Users({ users }: UsersProps) {
                             </div>
 
                             <div className="p-5 border-t border-[#290a0f] flex justify-end gap-3 bg-[#290a0f]/40">
-                                <button type="button" onClick={() => { setIsEditModalOpen(false); editForm.reset(); setSelectedUser(null); }} className="px-5 py-2.5 text-xs font-bold border border-[#ffb6c5]/15 hover:border-[#94344c] text-[#d2a9b1] hover:text-[#ffb6c5] hover:bg-[#290a0f] rounded-xl transition-all cursor-pointer" disabled={editForm.processing}>Cancelar</button>
+                                <button type="button" onClick={() => {
+ setIsEditModalOpen(false); editForm.reset(); setSelectedUser(null); 
+}} className="px-5 py-2.5 text-xs font-bold border border-[#ffb6c5]/15 hover:border-[#94344c] text-[#d2a9b1] hover:text-[#ffb6c5] hover:bg-[#290a0f] rounded-xl transition-all cursor-pointer" disabled={editForm.processing}>Cancelar</button>
                                 <button type="submit" className="bg-[#94344c] hover:bg-[#a63f57] text-[#fdeaea] font-bold text-xs px-7 py-2.5 rounded-xl transition-colors shadow-lg shadow-[#94344c]/10 cursor-pointer flex items-center gap-2" disabled={editForm.processing}>
                                     <Save className="h-4 w-4" />
                                     <span>Guardar cambios</span>
@@ -937,7 +1077,9 @@ export default function Users({ users }: UsersProps) {
                             </div>
 
                             <div className="p-5 border-t border-[#290a0f] flex justify-end gap-3 bg-[#290a0f]/40">
-                                <button type="button" onClick={() => { setIsResetPasswordModalOpen(false); passwordResetForm.reset(); setSelectedUser(null); }} className="px-5 py-2.5 text-xs font-bold border border-[#ffb6c5]/15 hover:border-[#94344c] text-[#d2a9b1] hover:text-[#ffb6c5] hover:bg-[#290a0f] rounded-xl transition-all cursor-pointer" disabled={passwordResetForm.processing}>Cancelar</button>
+                                <button type="button" onClick={() => {
+ setIsResetPasswordModalOpen(false); passwordResetForm.reset(); setSelectedUser(null); 
+}} className="px-5 py-2.5 text-xs font-bold border border-[#ffb6c5]/15 hover:border-[#94344c] text-[#d2a9b1] hover:text-[#ffb6c5] hover:bg-[#290a0f] rounded-xl transition-all cursor-pointer" disabled={passwordResetForm.processing}>Cancelar</button>
                                 <button type="submit" className="bg-[#94344c] hover:bg-[#a63f57] text-[#fdeaea] font-bold text-xs px-7 py-2.5 rounded-xl transition-colors shadow-lg shadow-[#94344c]/10 cursor-pointer flex items-center gap-2" disabled={passwordResetForm.processing}>
                                     <Save className="h-4 w-4" />
                                     <span>Guardar contraseña</span>

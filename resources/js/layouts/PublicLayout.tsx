@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState } from 'react';
+import { Link, usePage, router } from '@inertiajs/react';
 import {
     Menu,
     Search,
@@ -17,7 +17,8 @@ import {
     Mail,
     Phone
 } from 'lucide-react';
-import { Link, usePage } from '@inertiajs/react';
+import type { ReactNode} from 'react';
+import { useEffect, useState } from 'react';
 import CartDrawer from '@/components/CartDrawer';
 
 interface PublicLayoutProps {
@@ -39,15 +40,43 @@ export default function PublicLayout({ children, auth }: PublicLayoutProps) {
     const [isCategoriesDropdownOpen, setIsCategoriesDropdownOpen] = useState(false);
     const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
     const [isCartOpen, setIsCartOpen] = useState(false);
-    const [cartItems, setCartItems] = useState<any[]>([]);
+    const [cartItems, setCartItems] = useState<any[]>(() => {
+        if (typeof window !== 'undefined') {
+            const stored = localStorage.getItem('armario_rental_cart');
+
+            if (stored) {
+                try {
+                    const parsed = JSON.parse(stored);
+
+                    return Array.isArray(parsed) ? parsed : [parsed];
+                } catch {
+                    return [];
+                }
+            }
+        }
+
+        return [];
+    });
+    const [searchQuery, setSearchQuery] = useState('');
+
+    const handleSearchSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (searchQuery.trim()) {
+            router.get(`/catalogo?search=${encodeURIComponent(searchQuery.trim())}`);
+        } else {
+            router.get('/catalogo');
+        }
+    };
 
     const updateCartFromStorage = () => {
         const stored = localStorage.getItem('armario_rental_cart');
+
         if (stored) {
             try {
                 const parsed = JSON.parse(stored);
                 setCartItems(Array.isArray(parsed) ? parsed : [parsed]);
-            } catch (e) {
+            } catch {
                 setCartItems([]);
             }
         } else {
@@ -62,8 +91,6 @@ export default function PublicLayout({ children, auth }: PublicLayoutProps) {
     };
 
     useEffect(() => {
-        updateCartFromStorage();
-        
         const handleCartChange = () => {
             updateCartFromStorage();
         };
@@ -83,15 +110,18 @@ export default function PublicLayout({ children, auth }: PublicLayoutProps) {
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
+
         if (params.get('open_admin_popup') === '1') {
             const popup = window.open(
                 '/admin/dashboard',
                 'AdminConsole',
                 'width=1400,height=900,resizable=yes,scrollbars=yes,status=yes'
             );
+
             if (popup) {
                 popup.focus();
             }
+
             const newUrl = window.location.pathname + window.location.hash;
             window.history.replaceState({}, document.title, newUrl || '/');
         }
@@ -130,16 +160,18 @@ export default function PublicLayout({ children, auth }: PublicLayoutProps) {
                         </Link>
 
                         {/* Buscador Central */}
-                        <div className="hidden md:flex relative flex-1 max-w-lg mx-6 items-center">
+                        <form onSubmit={handleSearchSubmit} className="hidden md:flex relative flex-1 max-w-lg mx-6 items-center">
                             <input
                                 type="text"
                                 placeholder="Buscar prendas, categorías..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full bg-white border border-[#ebd7da]/40 text-[#1a050a] text-xs rounded-full pl-5 pr-11 py-2.5 focus:outline-none focus:border-[#dfb279] focus:ring-2 focus:ring-[#dfb279]/20 transition-all font-semibold placeholder:text-[#1a050a]/40"
                             />
-                            <div className="absolute right-1 p-1.5 rounded-full bg-[#3d0d16] text-white cursor-pointer hover:bg-[#571e26] transition-colors">
+                            <button type="submit" className="absolute right-1 p-1.5 rounded-full bg-[#3d0d16] text-white cursor-pointer hover:bg-[#571e26] transition-colors focus:outline-none border-none">
                                 <Search className="h-3.5 w-3.5" />
-                            </div>
-                        </div>
+                            </button>
+                        </form>
 
                         {/* Acciones Rápidas (Favoritos, Carrito, Mi Cuenta) */}
                         <div className="flex items-center gap-6 text-[#fdeaea]/90">
@@ -281,16 +313,20 @@ export default function PublicLayout({ children, auth }: PublicLayoutProps) {
 
                 {/* Buscador móvil expandible */}
                 {isMobileSearchOpen && (
-                    <div className="w-full bg-[#3d0d16] border-b border-[#ebd7da]/25 px-4 py-2.5 animate-in slide-in-from-top duration-200 md:hidden">
+                    <form onSubmit={handleSearchSubmit} className="w-full bg-[#3d0d16] border-b border-[#ebd7da]/25 px-4 py-2.5 animate-in slide-in-from-top duration-200 md:hidden">
                         <div className="relative flex items-center">
                             <input
                                 type="text"
                                 placeholder="Buscar prendas, categorías..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full bg-white border border-[#ebd7da]/40 text-[#1a050a] text-xs rounded-xl pl-4 pr-10 py-2 focus:outline-none focus:border-[#dfb279] font-semibold"
                             />
-                            <Search className="absolute right-3 h-4 w-4 text-[#3d0d16]" />
+                            <button type="submit" className="absolute right-3 p-1.5 h-7 w-7 text-[#3d0d16] hover:text-[#94344c] flex items-center justify-center cursor-pointer focus:outline-none border-none">
+                                <Search className="h-4 w-4" />
+                            </button>
                         </div>
-                    </div>
+                    </form>
                 )}
 
                 {/* NIVEL 2: BARRA DE NAVEGACIÓN HORIZONTAL */}
@@ -369,8 +405,8 @@ export default function PublicLayout({ children, auth }: PublicLayoutProps) {
                 {/* Mobile Menu Panel */}
                 {isMobileMenuOpen && (
                     <div className="md:hidden fixed inset-0 z-50 bg-[#1c050a] flex flex-col p-6 animate-in slide-in-from-right duration-300">
-                        <div className="flex justify-between items-center mb-8 border-b border-[#290a0f] pb-4">
-                            <span className="font-serif font-black text-[#dfb279] text-lg uppercase tracking-wider">Menú de Navegación</span>
+                        <div className="flex justify-between items-center mb-6 border-b border-[#290a0f] pb-4">
+                            <span className="font-serif font-black text-[#dfb279] text-lg uppercase tracking-wider">Navegación</span>
                             <button
                                 onClick={() => setIsMobileMenuOpen(false)}
                                 className="text-white hover:text-[#dfb279] transition-colors"
@@ -378,15 +414,88 @@ export default function PublicLayout({ children, auth }: PublicLayoutProps) {
                                 <X className="h-6 w-6" />
                             </button>
                         </div>
-                        <nav className="flex flex-col gap-5 text-sm font-bold uppercase tracking-wider text-[#d2a9b1] mb-8">
-                            <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-white py-1">Inicio</Link>
-                            <Link href="/catalogo" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-white py-1">Catálogo</Link>
-                            <Link href="/perfil?tab=reservas" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-white py-1">Mis reservas</Link>
-                            <Link href="/perfil" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-white py-1">Mi Cuenta</Link>
-                            <Link href="/como-funciona" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-white py-1">Cómo funciona</Link>
-                            <Link href="/nosotros" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-white py-1">Nosotros</Link>
-                            <Link href="/contacto" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-white py-1">Contacto</Link>
-                        </nav>
+
+                        {user ? (
+                            <div className="flex items-center gap-3 p-4 bg-[#290a0f]/40 border border-[#3d0d16] rounded-2xl mb-6 text-left">
+                                <div className="h-10 w-10 rounded-full bg-[#dfb279]/20 border border-[#dfb279]/30 flex items-center justify-center text-[#dfb279] font-extrabold text-sm">
+                                    {user.name.charAt(0).toUpperCase()}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-black text-white truncate">{user.name}</p>
+                                    <p className="text-[9px] text-[#dfb279] uppercase tracking-wider font-extrabold mt-0.5">{user.rol === 'admin' ? 'Administrador' : 'Estudiante'}</p>
+                                </div>
+                            </div>
+                        ) : null}
+
+                        <div className="flex-1 overflow-y-auto space-y-6 text-left pr-1 scrollbar-thin">
+                            <nav className="flex flex-col gap-4 text-sm font-bold uppercase tracking-wider text-[#d2a9b1]">
+                                <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-white py-1">Inicio</Link>
+                                <Link href="/catalogo" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-white py-1">Catálogo</Link>
+                                <Link href="/perfil?tab=reservas" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-white py-1">Mis reservas</Link>
+                                <Link href="/perfil" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-white py-1">Mi Cuenta</Link>
+                                <Link href="/como-funciona" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-white py-1">Cómo funciona</Link>
+                                <Link href="/nosotros" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-white py-1">Nosotros</Link>
+                                <Link href="/contacto" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-white py-1">Contacto</Link>
+                            </nav>
+
+                            {/* Categorías en menú móvil */}
+                            <div className="space-y-3 pt-4 border-t border-[#290a0f]">
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#dfb279] block">Categorías</span>
+                                <div className="grid grid-cols-2 gap-2 text-xs font-bold">
+                                    {categoriesList.filter((cat) => cat.slug !== 'graduacion').map((cat) => (
+                                        <Link
+                                            key={cat.id}
+                                            href={`/catalogo?categoria=${cat.slug}`}
+                                            onClick={() => setIsMobileMenuOpen(false)}
+                                            className="px-3 py-2.5 bg-[#290a0f]/30 border border-[#3d0d16] hover:bg-[#290a0f]/75 rounded-xl text-[#d2a9b1] hover:text-white transition-colors"
+                                        >
+                                            {cat.name}
+                                        </Link>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="pt-4 border-t border-[#290a0f] mt-auto">
+                            {user && user.rol === 'admin' && (
+                                <button
+                                    onClick={() => {
+                                        setIsMobileMenuOpen(false);
+                                        window.open(
+                                            '/admin/dashboard',
+                                            'AdminConsole',
+                                            'width=1400,height=900,resizable=yes,scrollbars=yes,status=yes'
+                                        );
+                                    }}
+                                    className="w-full mb-3 flex items-center justify-center gap-2 py-3 bg-[#dfb279]/10 border border-[#dfb279]/20 hover:bg-[#dfb279]/20 text-[#dfb279] rounded-xl text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                                >
+                                    <User className="h-4 w-4" />
+                                    Panel de Administración
+                                </button>
+                            )}
+
+                            {user ? (
+                                <Link
+                                    href="/logout"
+                                    method="post"
+                                    as="button"
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className="w-full flex items-center justify-center gap-2 py-3 bg-red-950/30 border border-red-900/20 hover:bg-red-900/30 text-red-400 hover:text-red-300 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors text-center cursor-pointer"
+                                >
+                                    <LogOut className="h-4 w-4" />
+                                    Cerrar Sesión
+                                </Link>
+                            ) : (
+                                <Link
+                                    href="/perfil"
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className="w-full flex items-center justify-center gap-2 py-3 bg-[#dfb279] text-[#3d0d16] hover:bg-[#e6c192] rounded-xl text-xs font-bold uppercase tracking-wider transition-colors text-center cursor-pointer"
+                                >
+                                    <User className="h-4 w-4" />
+                                    Iniciar Sesión
+                                </Link>
+                            )}
+                        </div>
                     </div>
                 )}
             </header>

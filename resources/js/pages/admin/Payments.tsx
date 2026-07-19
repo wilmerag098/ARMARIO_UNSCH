@@ -1,6 +1,4 @@
-import React, { useState } from 'react';
 import { Head, useForm, router } from '@inertiajs/react';
-import AdminLayout from '@/layouts/AdminLayout';
 import {
     CreditCard,
     TrendingUp,
@@ -13,15 +11,13 @@ import {
     Check,
     X,
     AlertTriangle,
-    Shirt,
-    Info,
-    Calendar,
     DollarSign,
     Wallet,
     Banknote
 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import React, { useState } from 'react';
 import Pagination from '@/components/Pagination';
+import AdminLayout from '@/layouts/AdminLayout';
 
 interface UserInfo {
     name: string;
@@ -73,9 +69,12 @@ export default function Payments({ reservations }: PaymentsProps) {
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
 
-    React.useEffect(() => {
+    const [prevFilters, setPrevFilters] = useState({ searchTerm, payFilter, guaranteeFilter });
+
+    if (searchTerm !== prevFilters.searchTerm || payFilter !== prevFilters.payFilter || guaranteeFilter !== prevFilters.guaranteeFilter) {
+        setPrevFilters({ searchTerm, payFilter, guaranteeFilter });
         setCurrentPage(1);
-    }, [searchTerm, payFilter, guaranteeFilter]);
+    }
 
     const paymentForm = useForm({
         payment_method: 'yape',
@@ -91,9 +90,11 @@ export default function Payments({ reservations }: PaymentsProps) {
         setSelectedRes(res);
         // Calculate recommended guarantee based on items if it is zero
         let defaultGuarantee = Number(res.guarantee_amount);
+
         if (defaultGuarantee === 0 && res.items) {
             defaultGuarantee = res.items.reduce((sum, item) => sum + Number(item.product?.security_deposit || 0), 0);
         }
+
         paymentForm.setData({
             payment_method: 'yape',
             guarantee_amount: defaultGuarantee
@@ -103,7 +104,10 @@ export default function Payments({ reservations }: PaymentsProps) {
 
     const handlePaymentSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedRes) return;
+
+        if (!selectedRes) {
+return;
+}
 
         router.patch(`/admin/pagos/${selectedRes.id}/registrar`, paymentForm.data, {
             onSuccess: () => {
@@ -124,7 +128,9 @@ export default function Payments({ reservations }: PaymentsProps) {
     };
 
     const handleGuaranteeSubmit = () => {
-        if (!selectedRes) return;
+        if (!selectedRes) {
+return;
+}
 
         router.patch(`/admin/pagos/${selectedRes.id}/devolver-garantia`, {
             guarantee_status: guaranteeAction
@@ -181,6 +187,7 @@ export default function Payments({ reservations }: PaymentsProps) {
                 </span>
             );
         }
+
         return (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
                 <Hourglass className="h-3 w-3" />
@@ -223,7 +230,10 @@ export default function Payments({ reservations }: PaymentsProps) {
     };
 
     const getMethodLabel = (method?: string) => {
-        if (!method) return <span className="text-[#571e26]/40">-</span>;
+        if (!method) {
+return <span className="text-[#571e26]/40">-</span>;
+}
+
         switch (method) {
             case 'yape':
                 return <span className="text-xs font-bold text-sky-400 uppercase">Yape</span>;
@@ -364,7 +374,8 @@ export default function Payments({ reservations }: PaymentsProps) {
 
             {/* Table */}
             <div className="bg-white border border-[#ebd7da] rounded-2xl overflow-hidden shadow-sm">
-                <div className="overflow-x-auto">
+                {/* Desktop View */}
+                <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="border-b border-[#ebd7da] text-[#571e26] bg-[#fcf8f9] text-xs uppercase tracking-wider">
@@ -483,6 +494,93 @@ export default function Payments({ reservations }: PaymentsProps) {
                         </tbody>
                     </table>
                 </div>
+
+                {/* Mobile View */}
+                <div className="block md:hidden divide-y divide-[#f3e8ea] text-sm text-[#290a0f]">
+                    {filteredReservations.length > 0 ? (
+                        currentReservations.map((res) => {
+                            const rawTotal = Number(res.total_amount);
+                            const rawGuarantee = Number(res.guarantee_amount);
+                            const rawRental = rawTotal - rawGuarantee;
+
+                            return (
+                                <div key={res.id} className="p-5 space-y-3 hover:bg-[#fdf9fa] transition-colors">
+                                    <div className="flex justify-between items-center">
+                                        <span className="font-mono font-bold text-[#94344c] tracking-wider text-xs">{res.order_number}</span>
+                                        <div className="flex gap-1">
+                                            {getMethodLabel(res.payment_method)}
+                                        </div>
+                                    </div>
+
+                                    <div className="text-xs space-y-1">
+                                        <div className="font-bold text-[#1a050a]">{res.user?.name || 'Alumno Desconocido'}</div>
+                                    </div>
+
+                                    <div className="bg-[#fcf8f9] px-4 py-3 rounded-2xl text-xs space-y-1.5 font-semibold text-[#571e26]">
+                                        <div className="flex justify-between">
+                                            <span className="text-stone-400 font-bold uppercase text-[9px] tracking-wider">Alquiler:</span>
+                                            <span className="text-[#1a050a]">S/ {rawRental.toFixed(2)}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-stone-400 font-bold uppercase text-[9px] tracking-wider">Dep. Garantía:</span>
+                                            <span className="text-[#94344c]">S/ {rawGuarantee.toFixed(2)}</span>
+                                        </div>
+                                        <div className="border-t border-[#ebd7da]/40 pt-1.5 flex justify-between font-bold">
+                                            <span className="text-stone-400 uppercase text-[9px] tracking-wider">Total General:</span>
+                                            <span className="text-[#1a050a] text-sm font-black">S/ {rawTotal.toFixed(2)}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex justify-between items-center text-xs">
+                                        <div>{getPaymentBadge(res.payment_status)}</div>
+                                        <div>{getGuaranteeBadge(res)}</div>
+                                    </div>
+
+                                    <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-[#fcf8f9]/50">
+                                        {/* Cobrar rápido */}
+                                        {res.payment_status === 'pendiente' && res.status !== 'rechazada' && (
+                                            <button
+                                                onClick={() => handleOpenPayment(res)}
+                                                className="inline-flex items-center justify-center gap-1.5 text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 py-2.5 px-4 rounded-xl transition-all font-bold flex-1 cursor-pointer"
+                                                title="Registrar Pago y Garantía"
+                                            >
+                                                <Banknote className="h-4 w-4" />
+                                                Cobrar Caja
+                                            </button>
+                                        )}
+
+                                        {/* Devolver/Retener garantía si pagó y sigue pendiente */}
+                                        {res.payment_status === 'pagado' && res.guarantee_status === 'pendiente' && (
+                                            <>
+                                                <button
+                                                    onClick={() => handleOpenGuarantee(res, 'devuelta')}
+                                                    className="inline-flex items-center justify-center gap-1.5 text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 py-2.5 px-3 rounded-xl transition-all font-bold flex-1 cursor-pointer"
+                                                    title="Devolver depósito de garantía completo"
+                                                >
+                                                    <Check className="h-3.5 w-3.5" />
+                                                    Reembolsar
+                                                </button>
+                                                <button
+                                                    onClick={() => handleOpenGuarantee(res, 'retenida')}
+                                                    className="inline-flex items-center justify-center gap-1.5 text-[11px] bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 py-2.5 px-3 rounded-xl transition-all font-bold flex-1 cursor-pointer"
+                                                    title="Retener garantía por daños en la prenda"
+                                                >
+                                                    <AlertTriangle className="h-3.5 w-3.5" />
+                                                    Penalizar
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })
+                    ) : (
+                        <div className="p-8 text-center text-[#571e26]/70 font-semibold">
+                            No hay registros de transacciones con los filtros seleccionados.
+                        </div>
+                    )}
+                </div>
+
                 <Pagination 
                     currentPage={currentPage}
                     totalPages={totalPages}
