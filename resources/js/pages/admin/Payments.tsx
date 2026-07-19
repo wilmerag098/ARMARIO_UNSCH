@@ -48,6 +48,9 @@ interface Reservation {
     guarantee_amount: string | number;
     user?: UserInfo;
     items?: ReservationItem[];
+    refund_requested?: boolean | number;
+    refund_method?: string;
+    refund_details?: string;
 }
 
 interface PaymentsProps {
@@ -207,6 +210,14 @@ return;
 
         switch (res.guarantee_status) {
             case 'pendiente':
+                if (res.refund_requested) {
+                    return (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-500 border border-amber-500/25 animate-pulse">
+                            Reembolso Solicitado
+                        </span>
+                    );
+                }
+
                 return (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
                         En Custodia
@@ -730,6 +741,22 @@ return <span className="text-[#571e26]/40">-</span>;
                                     </p>
                                 </div>
                             </div>
+                            {selectedRes.refund_requested && (
+                                <div className="bg-[#290a0f]/40 border border-[#ffb6c5]/15 rounded-2xl p-4 text-xs space-y-2 text-[#d2a9b1]">
+                                    <h4 className="font-extrabold text-[#ffb6c5] uppercase tracking-wider text-[10px]">Detalles del Reembolso Solicitado:</h4>
+                                    <div className="flex justify-between">
+                                        <span>Método de Pago:</span>
+                                        <span className="font-bold text-white uppercase">{selectedRes.refund_method}</span>
+                                    </div>
+                                    <div className="flex flex-col gap-1 mt-1">
+                                        <span>Cuenta / Número de Celular:</span>
+                                        <div className="bg-black/35 rounded-xl p-2.5 font-mono text-[#fdeaea] break-all border border-white/5 whitespace-pre-wrap">
+                                            {selectedRes.refund_details}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             <p className="text-sm text-[#d2a9b1]">
                                 {guaranteeAction === 'devuelta'
                                     ? `¿Estás seguro de que deseas reembolsar los S/ ${Number(selectedRes.guarantee_amount).toFixed(2)} al alumno ${selectedRes.user?.name}? Esto confirma que la prenda regresó limpia y en perfectas condiciones.`

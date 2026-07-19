@@ -118,4 +118,28 @@ class UserDashboardController extends Controller
 
         return redirect()->back()->with('success', 'Lista de favoritos actualizada.');
     }
+
+    public function requestRefund(Request $request, Reservation $reservation)
+    {
+        if ($reservation->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        if ($reservation->status !== 'devuelta') {
+            return redirect()->back()->with('error', 'Solo se puede solicitar reembolso de prendas devueltas.');
+        }
+
+        $request->validate([
+            'refund_method' => 'required|string|in:yape,plin,transferencia',
+            'refund_details' => 'required|string|max:500'
+        ]);
+
+        $reservation->update([
+            'refund_requested' => true,
+            'refund_method' => $request->refund_method,
+            'refund_details' => $request->refund_details
+        ]);
+
+        return redirect()->back()->with('success', 'Solicitud de reembolso enviada correctamente. El administrador la procesará pronto.');
+    }
 }

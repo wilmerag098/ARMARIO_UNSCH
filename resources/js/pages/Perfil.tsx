@@ -43,6 +43,9 @@ interface Reservation {
     start_date: string;
     end_date: string;
     items: ReservationItem[];
+    refund_requested?: boolean | number;
+    refund_method?: string;
+    refund_details?: string;
 }
 
 interface Product {
@@ -153,6 +156,33 @@ export default function Perfil({ reservations, favorites }: PerfilProps) {
         });
     };
 
+    const refundForm = useForm({
+        refund_method: 'yape',
+        refund_details: ''
+    });
+
+    const [selectedRefundRes, setSelectedRefundRes] = useState<Reservation | null>(null);
+
+    const handleRefundSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!selectedRefundRes) {
+return;
+}
+
+        refundForm.post(`/reservas/${selectedRefundRes.id}/solicitar-reembolso`, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setSelectedRefundRes(null);
+                refundForm.reset();
+                showToast('Solicitud de reembolso enviada correctamente.', 'success');
+            },
+            onError: () => {
+                showToast('No se pudo enviar la solicitud de reembolso.', 'error');
+            }
+        });
+    };
+
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'pendiente':
@@ -201,8 +231,12 @@ export default function Perfil({ reservations, favorites }: PerfilProps) {
         }
     };
 
-    const getGuaranteeBadge = (status: string) => {
-        switch (status) {
+    const getGuaranteeBadge = (res: Reservation) => {
+        if (res.guarantee_status === 'pendiente' && res.refund_requested) {
+            return <span className="text-amber-500 font-extrabold">Reembolso Solicitado</span>;
+        }
+
+        switch (res.guarantee_status) {
             case 'pendiente':
                 return <span className="text-blue-500 font-extrabold">En Custodia</span>;
             case 'devuelta':
@@ -210,7 +244,7 @@ export default function Perfil({ reservations, favorites }: PerfilProps) {
             case 'retenida':
                 return <span className="text-red-500 font-extrabold">Penalizada / Retenida</span>;
             default:
-                return <span className="text-gray-500">{status}</span>;
+                return <span className="text-gray-500">{res.guarantee_status}</span>;
         }
     };
 
@@ -414,12 +448,34 @@ export default function Perfil({ reservations, favorites }: PerfilProps) {
                                                             </div>
                                                             <div className="flex items-center gap-1.5 sm:justify-end">
                                                                 <AlertTriangle size={13} className="text-[#c19a6b]" />
-                                                                <span>Garantía: {getGuaranteeBadge(res.guarantee_status)}</span>
+                                                                <span>Garantía: {getGuaranteeBadge(res)}</span>
                                                             </div>
                                                         </div>
 
-                                                        {/* Botón de Cancelar */}
-                                                        <div className="flex justify-end pt-1">
+                                                        {/* Botón de Cancelar y Solicitar Reembolso */}
+                                                        <div className="flex justify-end items-center gap-3 pt-1">
+                                                            {res.status === 'devuelta' && res.guarantee_status === 'pendiente' && (
+                                                                res.refund_requested ? (
+                                                                    <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-amber-600 bg-amber-50 border border-amber-200 px-3.5 py-1.5 rounded-lg">
+                                                                        <Clock size={11} />
+                                                                        Reembolso Solicitado (En Verificación)
+                                                                    </div>
+                                                                ) : (
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setSelectedRefundRes(res);
+                                                                            refundForm.setData({
+                                                                                refund_method: 'yape',
+                                                                                refund_details: ''
+                                                                            });
+                                                                        }}
+                                                                        className="py-2 px-5 bg-[#3d0d16] hover:bg-[#571e26] border border-[#3d0d16] text-[#dfb279] font-bold text-xs uppercase tracking-wider rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm hover:scale-[1.01] active:scale-[0.99]"
+                                                                    >
+                                                                        Solicitar Reembolso
+                                                                    </button>
+                                                                )
+                                                            )}
+
                                                             {canCancel ? (
                                                                 <button
                                                                     onClick={() => handleCancelReservation(res.id)}
@@ -429,10 +485,12 @@ export default function Perfil({ reservations, favorites }: PerfilProps) {
                                                                     Cancelar Reserva
                                                                 </button>
                                                             ) : (
-                                                                <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-[#8a3348]/45 bg-[#fcf8f9] border border-[#ebd7da] px-3.5 py-1.5 rounded-lg">
-                                                                    <Lock size={11} />
-                                                                    No Cancelable (En Proceso)
-                                                                </div>
+                                                                (res.status !== 'devuelta' && res.status !== 'rechazada') && (
+                                                                    <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-[#8a3348]/45 bg-[#fcf8f9] border border-[#ebd7da] px-3.5 py-1.5 rounded-lg">
+                                                                        <Lock size={11} />
+                                                                        No Cancelable (En Proceso)
+                                                                    </div>
+                                                                )
                                                             )}
                                                         </div>
                                                     </div>
@@ -591,6 +649,89 @@ export default function Perfil({ reservations, favorites }: PerfilProps) {
                     </div>
                 </div>
             </div>
+
+            {/* Modal para solicitar reembolso */}
+            {selectedRefundRes && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+                    <div className="bg-[#1b0308]/95 border border-[#3e1315] rounded-3xl p-6 md:p-8 max-w-md w-full relative shadow-2xl text-[#fdeaea]">
+                        
+                        {/* Botón cerrar */}
+                        <button
+                            onClick={() => setSelectedRefundRes(null)}
+                            className="absolute top-4 right-4 text-white/50 hover:text-white bg-white/5 hover:bg-white/10 p-2 rounded-full transition-all cursor-pointer"
+                            title="Cerrar modal"
+                        >
+                            <X size={18} />
+                        </button>
+
+                        <h3 className="text-white text-xl font-bold mb-4 flex items-center gap-2">
+                            <CreditCard className="text-[#dfb279]" size={20} />
+                            Solicitar Reembolso
+                        </h3>
+
+                        <div className="bg-white/5 border border-white/10 rounded-2xl p-4 mb-5 text-xs space-y-2">
+                            <div className="flex justify-between">
+                                <span className="text-white/60">Código de Reserva:</span>
+                                <span className="font-mono font-bold text-white">#ALQ-0{selectedRefundRes.id}</span>
+                            </div>
+                            <div className="flex justify-between border-t border-white/5 pt-2 mt-1">
+                                <span className="text-white/60 font-bold uppercase tracking-wider">Monto a Reembolsar:</span>
+                                <span className="font-extrabold text-[#dfb279] text-sm">S/ {Number(selectedRefundRes.guarantee_amount).toFixed(2)}</span>
+                            </div>
+                        </div>
+
+                        <form onSubmit={handleRefundSubmit} className="space-y-4">
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold uppercase tracking-wider text-white/70">Método de Devolución</label>
+                                <select
+                                    value={refundForm.data.refund_method}
+                                    onChange={e => refundForm.setData('refund_method', e.target.value)}
+                                    className="w-full bg-[#1b0308]/40 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-[#dfb279] transition-all cursor-pointer font-semibold"
+                                >
+                                    <option value="yape">Yape</option>
+                                    <option value="plin">Plin</option>
+                                    <option value="transferencia">CCI / Transferencia Bancaria</option>
+                                </select>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold uppercase tracking-wider text-white/70">
+                                    {refundForm.data.refund_method === 'transferencia' 
+                                        ? 'Número de Cuenta Bancaria / CCI y Banco' 
+                                        : 'Número de Celular Asociado'}
+                                </label>
+                                <textarea
+                                    value={refundForm.data.refund_details}
+                                    onChange={e => refundForm.setData('refund_details', e.target.value)}
+                                    placeholder={refundForm.data.refund_method === 'transferencia'
+                                        ? 'Ej: BCP CCI: 002-xxxxxxxxxxxxxx-xx'
+                                        : 'Ej: 987654321'}
+                                    className="w-full bg-[#1b0308]/40 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#dfb279] transition-all font-semibold resize-none h-24"
+                                    required
+                                />
+                            </div>
+
+                            <div className="pt-2 flex justify-end gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedRefundRes(null)}
+                                    className="px-5 py-2.5 text-xs font-bold border border-white/10 hover:border-white/20 text-white/80 hover:text-white rounded-xl transition-all cursor-pointer"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-6 py-2.5 bg-gradient-to-r from-[#dfb279] to-[#cf9e58] text-[#1c050a] font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer shadow-md shadow-[#cf9e58]/10"
+                                    disabled={refundForm.processing}
+                                >
+                                    {refundForm.processing ? 'Enviando...' : 'Enviar Solicitud'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
         </PublicLayout>
     );
 }

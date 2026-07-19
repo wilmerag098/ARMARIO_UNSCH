@@ -42,6 +42,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/perfil', [UserDashboardController::class, 'profile'])->name('perfil');
     Route::patch('/perfil/actualizar', [UserDashboardController::class, 'updateProfile'])->name('perfil.update');
     Route::patch('/reservas/{reservation}/cancelar', [UserDashboardController::class, 'cancelReservation'])->name('reservas.cancel');
+    Route::post('/reservas/{reservation}/solicitar-reembolso', [UserDashboardController::class, 'requestRefund'])->name('reservas.refund-request');
     Route::post('/favoritos/toggle/{product}', [UserDashboardController::class, 'toggleFavorite'])->name('favoritos.toggle');
     
     Route::get('/dashboard', function () {

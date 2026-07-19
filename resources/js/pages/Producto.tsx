@@ -318,12 +318,14 @@ return;
                         </div>
 
                         {/* RIGHT COLUMN: Detail Info Card (5 Columns) */}
-                        <div className="lg:col-span-5 bg-[#62152D] border border-[#62152D] rounded-3xl p-6 md:p-8 relative shadow-sm">
+                        <div className="lg:col-span-5 bg-gradient-to-b from-[#3d0a14] to-[#1c0206] border border-[#ebd7da]/15 rounded-3xl p-6 md:p-8 relative shadow-xl shadow-[#1c0206]/40 overflow-hidden">
+                            {/* Decorative background glow */}
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-[#94344c]/10 rounded-full blur-2xl pointer-events-none" />
 
                             {/* Close Button back to catalog */}
                             <Link
                                 href="/catalogo"
-                                className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 p-2.5 rounded-full transition-all"
+                                className="absolute top-4 right-4 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 p-2.5 rounded-full transition-all z-10"
                                 title="Volver al Catálogo"
                             >
                                 <X size={18} />
@@ -332,12 +334,12 @@ return;
                             {/* Availability Badge */}
                             <div className="mb-6 flex">
                                 {isAvailable ? (
-                                    <span className="text-[#10b981] bg-emerald-50 border border-emerald-200 text-[11px] font-extrabold tracking-widest uppercase px-3 py-1.5 rounded-md flex items-center gap-1.5">
+                                    <span className="text-[#10b981] bg-emerald-500/10 border border-emerald-500/20 text-[11px] font-extrabold tracking-widest uppercase px-3 py-1.5 rounded-md flex items-center gap-1.5">
                                         <CheckCircle2 size={13} />
                                         DISPONIBLE PARA RESERVA
                                     </span>
                                 ) : (
-                                    <span className="text-[#ef4444] bg-red-50 border border-red-200 text-[11px] font-extrabold tracking-widest uppercase px-3 py-1.5 rounded-md flex items-center gap-1.5">
+                                    <span className="text-[#ef4444] bg-red-500/10 border border-red-500/20 text-[11px] font-extrabold tracking-widest uppercase px-3 py-1.5 rounded-md flex items-center gap-1.5">
                                         <AlertTriangle size={13} />
                                         OCUPADO
                                     </span>
@@ -355,12 +357,12 @@ return;
                             </p>
 
                             {/* Especificaciones Title */}
-                            <h3 className="text-[#facc15] font-extrabold text-sm tracking-wider uppercase mb-3">
+                            <h3 className="text-[#dfb279] font-extrabold text-xs tracking-wider uppercase mb-3">
                                 ESPECIFICACIONES:
                             </h3>
 
                             {/* Bordered Size Selector Box */}
-                            <div className="bg-[#952F57] border border-[#333333] rounded-2xl p-5 mb-8">
+                            <div className="bg-white/5 border border-white/10 rounded-2xl p-5 mb-6 hover:border-white/15 transition-colors">
                                 <div className="flex justify-between items-center mb-3">
                                     <p className="text-xs text-white/60 font-semibold uppercase tracking-wider">
                                         Seleccionar Talla:
@@ -368,7 +370,7 @@ return;
                                     <button
                                         type="button"
                                         onClick={() => setShowSizeGuide(true)}
-                                        className="text-xs text-[#ffb6c5] hover:text-white font-bold underline transition-colors"
+                                        className="text-xs text-[#ffb6c5] hover:text-[#dfb279] font-bold underline transition-colors"
                                     >
                                         Guía de tallas
                                     </button>
@@ -387,12 +389,12 @@ return;
                                                 key={size}
                                                 onClick={() => setSelectedSize(size)}
                                                 className={`w-11 h-11 rounded-xl border text-xs font-extrabold transition-all flex flex-col items-center justify-center relative ${isSelected
-                                                    ? 'bg-[#facc15] border-[#facc15] text-black scale-95 shadow-md shadow-[#facc15]/10'
+                                                    ? 'bg-[#dfb279] border-[#dfb279] text-[#1c050a] scale-95 shadow-md shadow-[#dfb279]/20'
                                                     : isSizeActive
-                                                        ? 'bg-[#1a1a1a] border-[#333333] text-white/80 hover:border-white/50 hover:text-white'
+                                                        ? 'bg-white/10 border-white/10 text-white/90 hover:bg-white/15 hover:border-white/20'
                                                         : exists
-                                                            ? 'bg-[#1a1a1a] border-[#5c1319]/40 text-red-400/50 hover:border-red-400/80'
-                                                            : 'bg-black/20 border-white/5 text-white/20 cursor-not-allowed line-through'
+                                                            ? 'bg-white/5 border-red-500/10 text-red-300/40 hover:border-red-500/20'
+                                                            : 'bg-white/5 border-white/5 text-white/20 cursor-not-allowed line-through'
                                                     }`}
                                                 disabled={!exists}
                                                 title={!exists ? 'Talla no fabricada' : isSizeActive ? 'Disponible' : 'Ocupado'}
@@ -423,7 +425,7 @@ return;
 
                             {/* Optional Color Selector Box */}
                             {product?.colors && product.colors.length > 0 && (
-                                <div className="bg-[#952F57] border border-[#333333] rounded-2xl p-5 mb-8">
+                                <div className="bg-white/5 border border-white/10 rounded-2xl p-5 mb-6 hover:border-white/15 transition-colors">
                                     <p className="text-xs text-white/60 font-semibold uppercase tracking-wider mb-3">
                                         Seleccionar Color
                                     </p>
@@ -438,7 +440,7 @@ return;
                                                     type="button"
                                                     onClick={() => setSelectedColor(isSelected ? '' : color)}
                                                     className={`w-9 h-9 rounded-full transition-all duration-200 cursor-pointer flex items-center justify-center border-2 ${isSelected
-                                                        ? 'border-[#facc15] scale-110 shadow-lg shadow-[#facc15]/30'
+                                                        ? 'border-[#dfb279] scale-110 shadow-lg shadow-[#dfb279]/30'
                                                         : 'border-transparent hover:border-[#ebd7da]/60 hover:scale-105'
                                                         }`}
                                                     title={color.charAt(0).toUpperCase() + color.slice(1)}
@@ -463,7 +465,7 @@ return;
                             )}
 
                             {/* Selector de Rango de Fechas de Renta */}
-                            <div className="bg-[#952F57] border border-[#333333] rounded-2xl p-5 mb-6">
+                            <div className="bg-white/5 border border-white/10 rounded-2xl p-5 mb-6 hover:border-white/15 transition-colors">
                                 <p className="text-xs text-white/60 font-semibold uppercase tracking-wider mb-3">
                                     Definir Período de Alquiler:
                                 </p>
@@ -483,7 +485,7 @@ return;
                                                     setEndDate(nextDay.toISOString().split('T')[0]);
                                                 }
                                             }}
-                                            className="w-full bg-[#CA668B] border border-[#333333] text-white text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-[#dfb279] transition-all cursor-pointer font-semibold"
+                                            className="w-full bg-black/25 border border-white/10 text-white text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#dfb279] focus:ring-1 focus:ring-[#dfb279] transition-all cursor-pointer font-semibold"
                                         />
                                     </div>
                                     <div>
@@ -495,13 +497,13 @@ return;
                                             onChange={(e) => {
                                                 setEndDate(e.target.value);
                                             }}
-                                            className="w-full bg-[#CA668B] border border-[#333333] text-white text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-[#dfb279] transition-all cursor-pointer font-semibold"
+                                            className="w-full bg-black/25 border border-white/10 text-white text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#dfb279] focus:ring-1 focus:ring-[#dfb279] transition-all cursor-pointer font-semibold"
                                         />
                                     </div>
                                 </div>
 
                                 {/* Desglose Tarifario */}
-                                <div className="mt-4 pt-4 border-t border-[#333333] space-y-2 text-xs">
+                                <div className="mt-4 pt-4 border-t border-white/10 space-y-2 text-xs">
                                     <div className="flex justify-between">
                                         <span className="text-white/50">Costo Alquiler ({rentDays} {rentDays === 1 ? 'día' : 'días'}: {formatDate(startDate)} al {formatDate(endDate)})</span>
                                         <span className="text-white font-semibold">S/ {(pricePerDay * rentDays).toFixed(2)}</span>
@@ -510,15 +512,15 @@ return;
                                         <span className="text-white/50">Garantía Reembolsable</span>
                                         <span className="text-white font-semibold">S/ {parseFloat(product?.security_deposit || '50').toFixed(2)}</span>
                                     </div>
-                                    <div className="flex justify-between text-sm pt-2 border-t border-[#333333]/50">
+                                    <div className="flex justify-between text-sm pt-2 border-t border-white/10">
                                         <span className="text-white font-bold uppercase tracking-wider">Total Estimado</span>
-                                        <span className="text-[#facc15] font-extrabold">S/ {((pricePerDay * rentDays) + parseFloat(product?.security_deposit || '50')).toFixed(2)}</span>
+                                        <span className="text-[#dfb279] font-extrabold">S/ {((pricePerDay * rentDays) + parseFloat(product?.security_deposit || '50')).toFixed(2)}</span>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Divider Line */}
-                            <div className="border-t border-[#2e2e2e] my-4"></div>
+                            <div className="border-t border-white/5 my-4"></div>
 
                             {/* Price & Action Section */}
                             <div className="flex justify-between items-center mt-6">
@@ -529,13 +531,13 @@ return;
                                             <span className="text-xs text-white/40 line-through mb-1">
                                                 S/ {parseFloat(product?.price_per_day || 0).toFixed(2)}
                                             </span>
-                                            <p className="text-[26px] font-extrabold text-[#facc15] leading-none">
+                                            <p className="text-[26px] font-extrabold text-[#dfb279] leading-none">
                                                 S/ {parseFloat(product?.discounted_price_per_day || 0).toFixed(2)}
                                                 <span className="text-[11px] font-normal text-white/60"> / día</span>
                                             </p>
                                         </div>
                                     ) : (
-                                        <p className="text-[26px] font-extrabold text-[#facc15] leading-none">
+                                        <p className="text-[26px] font-extrabold text-[#dfb279] leading-none">
                                             S/ {parseFloat(product?.price_per_day || 0).toFixed(2)}
                                             <span className="text-[11px] font-normal text-white/60"> / día</span>
                                         </p>
@@ -546,14 +548,14 @@ return;
                                 {isAvailable ? (
                                     <button
                                         onClick={handleAddToCart}
-                                        className="bg-[#e28700] hover:bg-[#f59e0b] text-black font-extrabold text-xs px-6 py-4 rounded-xl tracking-wider shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all uppercase"
+                                        className="bg-gradient-to-r from-[#dfb279] to-[#cf9e58] hover:from-[#eec58f] hover:to-[#dfb279] text-[#1c050a] font-extrabold text-xs px-6 py-4 rounded-xl tracking-wider shadow-lg shadow-[#cf9e58]/10 hover:scale-[1.02] active:scale-[0.98] transition-all uppercase cursor-pointer"
                                     >
                                         Añadir al carrito
                                     </button>
                                 ) : (
                                     <button
                                         disabled
-                                        className="bg-[#222222] border border-[#333333] text-white/30 font-bold text-xs px-6 py-4 rounded-xl tracking-wider cursor-not-allowed"
+                                        className="bg-white/5 border border-white/10 text-white/30 font-bold text-xs px-6 py-4 rounded-xl tracking-wider cursor-not-allowed"
                                     >
                                         NO DISPONIBLE
                                     </button>
@@ -644,20 +646,20 @@ return;
 
                                     {/* Líneas de guía de medida */}
                                     {/* Pecho */}
-                                    <path d="M28 50 L72 50" stroke="#facc15" strokeWidth="1" strokeDasharray="3,3" />
-                                    <text x="50" y="47" fill="#facc15" fontSize="5" fontWeight="bold" textAnchor="middle">PECHO</text>
+                                    <path d="M28 50 L72 50" stroke="#dfb279" strokeWidth="1" strokeDasharray="3,3" />
+                                    <text x="50" y="47" fill="#dfb279" fontSize="5" fontWeight="bold" textAnchor="middle">PECHO</text>
 
                                     {/* Cintura */}
-                                    <path d="M30 75 L70 75" stroke="#facc15" strokeWidth="1" strokeDasharray="3,3" />
-                                    <text x="50" y="72" fill="#facc15" fontSize="5" fontWeight="bold" textAnchor="middle">CINTURA</text>
+                                    <path d="M30 75 L70 75" stroke="#dfb279" strokeWidth="1" strokeDasharray="3,3" />
+                                    <text x="50" y="72" fill="#dfb279" fontSize="5" fontWeight="bold" textAnchor="middle">CINTURA</text>
 
                                     {/* Cadera */}
-                                    <path d="M31 98 L69 98" stroke="#facc15" strokeWidth="1" strokeDasharray="3,3" />
-                                    <text x="50" y="95" fill="#facc15" fontSize="5" fontWeight="bold" textAnchor="middle">CADERA</text>
+                                    <path d="M31 98 L69 98" stroke="#dfb279" strokeWidth="1" strokeDasharray="3,3" />
+                                    <text x="50" y="95" fill="#dfb279" fontSize="5" fontWeight="bold" textAnchor="middle">CADERA</text>
 
                                     {/* Hombros ancho */}
-                                    <path d="M32 32 L68 32" stroke="#facc15" strokeWidth="1" strokeDasharray="3,3" />
-                                    <text x="50" y="29" fill="#facc15" fontSize="5" fontWeight="bold" textAnchor="middle">HOMBROS</text>
+                                    <path d="M32 32 L68 32" stroke="#dfb279" strokeWidth="1" strokeDasharray="3,3" />
+                                    <text x="50" y="29" fill="#dfb279" fontSize="5" fontWeight="bold" textAnchor="middle">HOMBROS</text>
                                 </svg>
                             </div>
                             <div className="space-y-4">
@@ -677,7 +679,7 @@ return;
                         <div className="space-y-6">
                             {/* Table Tops */}
                             <div>
-                                <h5 className="text-[#facc15] font-bold text-xs uppercase tracking-widest mb-3">Talla Guía Tops (Sacos / Vestidos)</h5>
+                                <h5 className="text-[#dfb279] font-bold text-xs uppercase tracking-widest mb-3">Talla Guía Tops (Sacos / Vestidos)</h5>
                                 <div className="overflow-x-auto rounded-xl border border-[#3e1315]">
                                     <table className="w-full text-left border-collapse text-xs">
                                         <thead>
@@ -732,7 +734,7 @@ return;
 
                             {/* Table Bottom */}
                             <div>
-                                <h5 className="text-[#facc15] font-bold text-xs uppercase tracking-widest mb-3">Talla Guía Bottom (Pantalones)</h5>
+                                <h5 className="text-[#dfb279] font-bold text-xs uppercase tracking-widest mb-3">Talla Guía Bottom (Pantalones)</h5>
                                 <div className="overflow-x-auto rounded-xl border border-[#3e1315]">
                                     <table className="w-full text-left border-collapse text-xs">
                                         <thead>
