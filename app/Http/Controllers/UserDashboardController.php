@@ -7,12 +7,53 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Reservation;
 use App\Models\Product;
+use MercadoPago\MercadoPagoConfig;
+use MercadoPago\Client\Payment\PaymentClient;
 
 class UserDashboardController extends Controller
 {
-    public function profile()
+    public function profile(Request $request)
     {
         $user = Auth::user();
+
+        // Verificación de callback de Mercado Pago (Redirect Fallback)
+        $paymentId = $request->query('payment_id');
+        $status = $request->query('status');
+
+        if ($paymentId && $status === 'approved') {
+            try {
+                $token = config('services.mercadopago.token');
+                if ($token) {
+                    MercadoPagoConfig::setAccessToken($token);
+                    if (config('app.env') === 'local') {
+                        MercadoPagoConfig::setRuntimeEnviroment(MercadoPagoConfig::LOCAL);
+                    }
+
+                    $client = new PaymentClient();
+                    $payment = $client->get($paymentId);
+
+                    if ($payment && $payment->status === 'approved') {
+                        $orderNumber = $payment->external_reference;
+                        $reservation = Reservation::where('order_number', $orderNumber)
+                            ->where('user_id', $user->id)
+                            ->first();
+
+                        if ($reservation && $reservation->payment_status !== 'pagado') {
+                            $reservation->update([
+                                'payment_status' => 'pagado',
+                                'status' => 'confirmada',
+                                'payment_reference' => (string) $paymentId,
+                            ]);
+                            \Illuminate\Support\Facades\Log::info("Reservation #{$orderNumber} updated via redirect callback verification. Payment ID: {$paymentId}");
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Error verifying payment in redirect callback: ' . $e->getMessage(), [
+                    'exception' => $e
+                ]);
+            }
+        }
         
         $reservations = Reservation::where('user_id', $user->id)
             ->with(['items.product', 'items.inventory'])

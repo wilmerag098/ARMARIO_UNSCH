@@ -75,6 +75,33 @@ export default function Perfil({ reservations, favorites }: PerfilProps) {
         }
     }, []);
 
+    // Detectar retorno de pago desde Mercado Pago
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const paymentStatus = params.get('payment_status');
+        if (paymentStatus) {
+            if (paymentStatus === 'success') {
+                showToast('¡Pago realizado con éxito! Tu reserva ha sido confirmada.', 'success');
+            } else if (paymentStatus === 'pending') {
+                showToast('Tu pago está en proceso de verificación por Mercado Pago.', 'success');
+            } else if (paymentStatus === 'failure') {
+                showToast('No se pudo completar el pago. Por favor, inténtalo de nuevo.', 'error');
+            }
+
+            // Limpiar parámetros de Mercado Pago de la URL sin recargar la página
+            const mpParams = [
+                'payment_status', 'payment_id', 'status', 'merchant_order_id', 
+                'preference_id', 'collection_id', 'collection_status', 
+                'payment_type', 'processing_mode', 'merchant_account_id'
+            ];
+            mpParams.forEach(p => params.delete(p));
+            
+            const newQuery = params.toString();
+            const cleanUrl = window.location.pathname + (newQuery ? `?${newQuery}` : '');
+            window.history.replaceState({}, document.title, cleanUrl);
+        }
+    }, []);
+
     // Form hook for profile editing
     const profileForm = useForm({
         name: (auth.user as any).name || '',
@@ -189,9 +216,15 @@ export default function Perfil({ reservations, favorites }: PerfilProps) {
 
             {/* Toast Alertas */}
             {toast && (
-                <div className="fixed bottom-5 right-5 z-50 flex items-center gap-3 bg-[#571e26] border-2 border-[#ffb6c5]/35 text-white px-5 py-4 rounded-2xl shadow-2xl animate-in slide-in-from-bottom-5 duration-300">
-                    <div className="bg-[#94344c] p-1.5 rounded-lg text-white">
-                        <Check className="h-5 w-5" />
+                <div className={`fixed bottom-5 right-5 z-50 flex items-center gap-3 border-2 text-white px-5 py-4 rounded-2xl shadow-2xl animate-in slide-in-from-bottom-5 duration-300 ${
+                    toast.type === 'error' 
+                        ? 'bg-[#420f14] border-red-500/30' 
+                        : 'bg-[#571e26] border-[#ffb6c5]/35'
+                }`}>
+                    <div className={`p-1.5 rounded-lg text-white ${
+                        toast.type === 'error' ? 'bg-red-600' : 'bg-[#94344c]'
+                    }`}>
+                        {toast.type === 'error' ? <AlertTriangle className="h-5 w-5" /> : <Check className="h-5 w-5" />}
                     </div>
                     <div>
                         <p className="text-sm font-semibold">{toast.message}</p>

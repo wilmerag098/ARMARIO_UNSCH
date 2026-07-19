@@ -1,5 +1,6 @@
 import { Head, Link, usePage, useForm, router } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
+import { initMercadoPago, CardPayment } from '@mercadopago/sdk-react';
 import { 
     ArrowLeft, HelpCircle, Check, CreditCard, Lock, AlertCircle, 
     Calendar, User as UserIcon, Mail, Shield, Sparkles, 
@@ -7,11 +8,22 @@ import {
     MapPin, Truck, ShoppingBag
 } from 'lucide-react';
 
-export default function Checkout({ product, accessories = [], promotion }: { product: any; accessories?: any[]; promotion?: any }) {
+export default function Checkout({ 
+    product, 
+    accessories = [], 
+    promotion, 
+    mercadopago_public_key 
+}: { 
+    product: any; 
+    accessories?: any[]; 
+    promotion?: any; 
+    mercadopago_public_key: string 
+}) {
     const { auth } = usePage().props as any;
     
     // Auth Mode: 'register' or 'login' for non-logged in users
     const [authMode, setAuthMode] = useState<'register' | 'login'>('register');
+    const [mpMethod, setMpMethod] = useState<'card' | 'wallet'>('card');
     
     // Login form local state
     const [loginData, setLoginData] = useState({ email: '', password: '' });
@@ -181,89 +193,153 @@ export default function Checkout({ product, accessories = [], promotion }: { pro
         window.dispatchEvent(new CustomEvent('cart-changed'));
     };
 
-    const handleCheckoutSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
+    // Inicializar el SDK de Mercado Pago
+    useEffect(() => {
+        if (mercadopago_public_key) {
+            initMercadoPago(mercadopago_public_key, { locale: 'es-PE' });
+        }
+    }, [mercadopago_public_key]);
 
-        // 1. Validar fechas de alquiler
+    const validateCheckoutForm = () => {
         const start = new Date(data.start_date);
         const end = new Date(data.end_date);
         if (isNaN(start.getTime()) || isNaN(end.getTime())) {
             alert('Por favor, ingresa fechas válidas para el alquiler.');
-            return;
+            return false;
         }
         if (end < start) {
             alert('La fecha de devolución debe ser posterior o igual a la de recogida.');
-            return;
+            return false;
         }
-
-        // 2. Validar talla seleccionada
         if (!data.inventory_id) {
             alert('Por favor, selecciona una talla antes de continuar.');
-            return;
+            return false;
         }
-
         if (!auth.user) {
-            // El usuario no está registrado/logueado
             if (authMode === 'register') {
                 if (!data.name || !data.last_name || !data.dni || !data.university_id || !data.phone || !data.email || !data.password) {
-                    alert('Por favor, completa todos los campos de datos personales y contraseña.');
-                    return;
+                    alert('Por favor, completa todos los campos de datos personales y contraseña para registrarte.');
+                    return false;
                 }
-                
-                // Primero registrar
-                router.post('/checkout/register', {
-                    name: data.name,
-                    last_name: data.last_name,
-                    dni: data.dni,
-                    university_id: data.university_id,
-                    phone: data.phone,
-                    email: data.email,
-                    password: data.password
-                }, {
-                    preserveScroll: true,
-                    onSuccess: () => {
-                        // Una vez registrado e iniciado sesión automáticamente, enviar el checkout
-                        router.post('/checkout', {
-                            product_id: data.product_id,
-                            inventory_id: data.inventory_id,
-                            color: data.color,
-                            start_date: data.start_date,
-                            end_date: data.end_date,
-                            accessories: data.accessories,
-                            payment_method: 'mercadopago',
-                            payment_reference: '',
-                            name: data.name,
-                            last_name: data.last_name,
-                            dni: data.dni,
-                            university_id: data.university_id,
-                            phone: data.phone
-                        }, {
-                            preserveScroll: true,
-                            onSuccess: () => {
-                                clearCart();
-                            },
-                            onFinish: () => {
-                                clearCart();
-                            }
-                        });
-                    }
-                });
             } else {
                 alert('Por favor, inicia sesión primero usando el formulario correspondiente.');
+                return false;
             }
         } else {
-            // El usuario ya está logueado
             if (!data.name || !data.last_name || !data.dni || !data.university_id || !data.phone || !data.email) {
                 alert('Por favor, completa todos los campos de datos personales obligatorios.');
-                return;
+                return false;
             }
-            
-            post('/checkout', {
+        }
+        return true;
+    };
+
+    const handleCardPaymentSubmit = async (cardFormData: any) => {
+        if (!validateCheckoutForm()) {
+            throw new Error('Formulario de reserva incompleto');
+        }
+
+        const payload = {
+            product_id: data.product_id,
+            inventory_id: data.inventory_id,
+            color: data.color,
+            start_date: data.start_date,
+            end_date: data.end_date,
+            accessories: data.accessories,
+            payment_method: 'mercadopago_card',
+            payment_token: cardFormData.token,
+            payment_method_id: cardFormData.payment_method_id,
+            installments: cardFormData.installments,
+            issuer_id: cardFormData.issuer_id,
+            name: data.name,
+            last_name: data.last_name,
+            dni: data.dni,
+            university_id: data.university_id,
+            phone: data.phone,
+            email: data.email,
+        };
+
+        if (!auth.user) {
+            // Registrar primero
+            router.post('/checkout/register', {
+                name: data.name,
+                last_name: data.last_name,
+                dni: data.dni,
+                university_id: data.university_id,
+                phone: data.phone,
+                email: data.email,
+                password: data.password
+            }, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    // Una vez registrado e iniciado sesión automáticamente, enviar el checkout
+                    router.post('/checkout', payload, {
+                        preserveScroll: true,
+                        onSuccess: () => {
+                            clearCart();
+                        }
+                    });
+                }
+            });
+        } else {
+            // Usuario ya logueado
+            router.post('/checkout', payload, {
                 preserveScroll: true,
                 onSuccess: () => {
                     clearCart();
-                },
-                onFinish: () => {
+                }
+            });
+        }
+    };
+
+    const handleWalletPaymentSubmit = async () => {
+        if (!validateCheckoutForm()) {
+            return;
+        }
+
+        const payload = {
+            product_id: data.product_id,
+            inventory_id: data.inventory_id,
+            color: data.color,
+            start_date: data.start_date,
+            end_date: data.end_date,
+            accessories: data.accessories,
+            payment_method: 'mercadopago_wallet',
+            name: data.name,
+            last_name: data.last_name,
+            dni: data.dni,
+            university_id: data.university_id,
+            phone: data.phone,
+            email: data.email,
+        };
+
+        if (!auth.user) {
+            // Registrar primero
+            router.post('/checkout/register', {
+                name: data.name,
+                last_name: data.last_name,
+                dni: data.dni,
+                university_id: data.university_id,
+                phone: data.phone,
+                email: data.email,
+                password: data.password
+            }, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    // Una vez registrado e iniciado sesión automáticamente, enviar el checkout
+                    router.post('/checkout', payload, {
+                        preserveScroll: true,
+                        onSuccess: () => {
+                            clearCart();
+                        }
+                    });
+                }
+            });
+        } else {
+            // Usuario ya logueado
+            router.post('/checkout', payload, {
+                preserveScroll: true,
+                onSuccess: () => {
                     clearCart();
                 }
             });
@@ -734,7 +810,7 @@ export default function Checkout({ product, accessories = [], promotion }: { pro
                                     </div>
                                 </div>
 
-                                <form onSubmit={handleCheckoutSubmit} className="bg-white border border-[#f5dce0]/85 rounded-3xl p-6 shadow-sm space-y-6">
+                                <div className="bg-white border border-[#f5dce0]/85 rounded-3xl p-6 shadow-sm space-y-6">
                                     
                                     <h3 className="text-base font-extrabold text-[#4a1018] tracking-wide border-b border-[#fbf2f4] pb-4 font-serif">
                                         Resumen de Alquiler
@@ -807,26 +883,97 @@ export default function Checkout({ product, accessories = [], promotion }: { pro
                                         </div>
                                     </div>
 
-                                    {/* Botón Pago Integrado Vino Tinto */}
-                                    <div className="pt-2">
+                                    {/* Mensaje de Error de Pago */}
+                                    {errors.payment_method && (
+                                        <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 rounded-2xl flex items-start gap-2.5 text-xs font-semibold select-none leading-normal">
+                                            <AlertCircle size={15} className="shrink-0 text-red-500 mt-0.5" />
+                                            <span>{errors.payment_method}</span>
+                                        </div>
+                                    )}
+
+                                    {/* Selector de sub-método de Mercado Pago */}
+                                    <div className="flex gap-2 p-1.5 bg-[#fbf2f4] rounded-2xl border border-[#f5dce0]/65 text-[11px] font-bold">
                                         <button
-                                            type="submit"
-                                            disabled={processing}
-                                            className="w-full bg-[#782331] hover:bg-[#8e2a39] text-white font-extrabold py-4 rounded-2xl flex items-center justify-center gap-2.5 transition-all shadow-md shadow-[#782331]/20 hover:shadow-lg disabled:opacity-50 tracking-wider text-xs uppercase cursor-pointer"
+                                            type="button"
+                                            onClick={() => setMpMethod('card')}
+                                            className={`flex-1 py-2.5 rounded-xl transition-all cursor-pointer ${
+                                                mpMethod === 'card'
+                                                    ? 'bg-[#782331] text-white shadow-sm font-extrabold'
+                                                    : 'text-[#805056] hover:text-[#4a1018]'
+                                            }`}
                                         >
-                                            {processing ? (
-                                                <>
-                                                    <RefreshCw className="animate-spin" size={14} />
-                                                    <span>Procesando...</span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Lock size={13} />
-                                                    <span>Pagar con Mercado Pago</span>
-                                                </>
-                                            )}
+                                            Tarjeta Crédito/Débito
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setMpMethod('wallet')}
+                                            className={`flex-1 py-2.5 rounded-xl transition-all cursor-pointer ${
+                                                mpMethod === 'wallet'
+                                                    ? 'bg-[#782331] text-white shadow-sm font-extrabold'
+                                                    : 'text-[#805056] hover:text-[#4a1018]'
+                                            }`}
+                                        >
+                                            Billetera Mercado Pago
                                         </button>
                                     </div>
+
+                                    {/* Renderizado condicional según sub-método elegido */}
+                                    {mpMethod === 'card' ? (
+                                        <div className="pt-2 relative z-10 select-none">
+                                            {mercadopago_public_key ? (
+                                                <CardPayment
+                                                    initialization={{
+                                                        amount: total,
+                                                        payer: {
+                                                            email: data.email || auth.user?.email || '',
+                                                        }
+                                                    }}
+                                                    onSubmit={handleCardPaymentSubmit}
+                                                    onError={(error) => {
+                                                        console.error('Error en el Brick de Mercado Pago:', error);
+                                                    }}
+                                                    customization={{
+                                                        visual: {
+                                                            style: {
+                                                                theme: 'flat',
+                                                            }
+                                                        },
+                                                        paymentMethods: {
+                                                            maxInstallments: 12,
+                                                        }
+                                                    }}
+                                                />
+                                            ) : (
+                                                <div className="p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl text-xs font-semibold text-center">
+                                                    Cargando pasarela de pagos segura...
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="pt-2">
+                                            <button
+                                                type="button"
+                                                onClick={handleWalletPaymentSubmit}
+                                                disabled={processing}
+                                                className="w-full bg-[#782331] hover:bg-[#8e2a39] text-white font-extrabold py-4 rounded-2xl flex items-center justify-center gap-2.5 transition-all shadow-md shadow-[#782331]/20 hover:shadow-lg disabled:opacity-50 tracking-wider text-xs uppercase cursor-pointer"
+                                            >
+                                                {processing ? (
+                                                    <>
+                                                        <RefreshCw className="animate-spin" size={14} />
+                                                        <span>Procesando...</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Lock size={13} />
+                                                        <span>Pagar con Mercado Pago Wallet</span>
+                                                    </>
+                                                )}
+                                            </button>
+                                            <p className="text-[10px] text-[#805056]/80 text-center mt-2.5 leading-normal">
+                                                Te redirigiremos a Mercado Pago de forma segura para ingresar con tu cuenta (e-mail de comprador) y autorizar el pago con tu saldo ficticio.
+                                            </p>
+                                        </div>
+                                    )}
 
                                     {/* Distintivos de Confianza */}
                                     <div className="pt-4 border-t border-[#fbf2f4] flex flex-col items-[#805056] justify-center gap-2 text-[10px] text-[#805056]/80 font-medium">
@@ -839,7 +986,7 @@ export default function Checkout({ product, accessories = [], promotion }: { pro
                                             <span>Transacción encriptada SSL</span>
                                         </div>
                                     </div>
-                                </form>
+                                </div>
                             </div>
                         </div>
                     </div>

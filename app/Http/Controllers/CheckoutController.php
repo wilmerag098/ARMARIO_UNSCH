@@ -10,6 +10,7 @@ use App\Models\ReservationItem;
 use Illuminate\Support\Facades\Auth;
 use MercadoPago\MercadoPagoConfig;
 use MercadoPago\Client\Preference\PreferenceClient;
+use MercadoPago\Client\Payment\PaymentClient;
 
 class CheckoutController extends Controller
 {
@@ -39,7 +40,8 @@ class CheckoutController extends Controller
         return Inertia::render('Checkout', [
             'product' => $product,
             'accessories' => $accessories,
-            'promotion' => $promotion
+            'promotion' => $promotion,
+            'mercadopago_public_key' => config('services.mercadopago.key')
         ]);
     }
 
@@ -54,8 +56,13 @@ class CheckoutController extends Controller
             'accessories' => 'nullable|array',
             'accessories.*.product_id' => 'required|exists:products,id',
             'accessories.*.inventory_id' => 'required|exists:inventories,id',
-            'payment_method' => 'required|string|in:yape,plin,mercadopago',
+            'payment_method' => 'required|string|in:yape,plin,mercadopago_card,mercadopago_wallet',
             'payment_reference' => 'required_if:payment_method,yape,plin|nullable|string|min:8|max:20',
+            // Campos para integración avanzada de Mercado Pago
+            'payment_token' => 'required_if:payment_method,mercadopago_card|nullable|string',
+            'payment_method_id' => 'required_if:payment_method,mercadopago_card|nullable|string',
+            'installments' => 'required_if:payment_method,mercadopago_card|nullable|integer',
+            'issuer_id' => 'nullable|string',
             // Opcionalmente actualizar perfil de usuario si es enviado
             'name' => 'nullable|string|max:255',
             'last_name' => 'nullable|string|max:255',
@@ -200,7 +207,133 @@ class CheckoutController extends Controller
             ]);
         }
 
-        if ($validated['payment_method'] === 'mercadopago') {
+        if ($validated['payment_method'] === 'mercadopago_card') {
+            try {
+                $token = config('services.mercadopago.token');
+                if (!$token) {
+                    throw new \Exception('El token de acceso de MercadoPago no está configurado.');
+                }
+
+                MercadoPagoConfig::setAccessToken($token);
+
+                if (config('app.env') === 'local') {
+                    MercadoPagoConfig::setRuntimeEnviroment(MercadoPagoConfig::LOCAL);
+                }
+
+                $client = new PaymentClient();
+                
+                $paymentRequest = [
+                    "transaction_amount" => (float) $totalAmount,
+                    "token" => $validated['payment_token'],
+                    "description" => "Alquiler de Prenda - Orden " . $orderNumber,
+                    "installments" => (int) $validated['installments'],
+                    "payment_method_id" => $validated['payment_method_id'],
+                    "payer" => [
+                        "email" => $user->email,
+                        "identification" => [
+                            "type" => "DNI",
+                            "number" => $user->dni
+                        ]
+                    ]
+                ];
+
+                if (!empty($validated['issuer_id'])) {
+                    $paymentRequest["issuer_id"] = $validated['issuer_id'];
+                }
+
+                $payment = $client->create($paymentRequest);
+
+                if ($payment && $payment->status === 'approved') {
+                    // El pago fue aprobado con éxito
+                    $reservation->update([
+                        'payment_status' => 'pagado',
+                        'status' => 'confirmada',
+                        'payment_reference' => (string) $payment->id
+                    ]);
+                    
+                    return redirect()->route('perfil')->with('success', '¡Reserva confirmada y pago aprobado!');
+                } else {
+                    // Si el pago no fue aprobado (ej. rechazado, pendiente, en proceso)
+                    $statusDetail = $payment ? ($payment->status_detail ?? $payment->status) : 'desconocido';
+                    
+                    // Eliminar la reserva y sus items si el pago no fue aprobado
+                    $reservation->delete();
+                    
+                    $errorMsg = 'El pago fue rechazado o está en proceso. Estado: ' . $statusDetail;
+                    if ($statusDetail === 'cc_rejected_bad_filled_card_number') {
+                        $errorMsg = 'Número de tarjeta incorrecto. Verifica los datos.';
+                    } elseif ($statusDetail === 'cc_rejected_bad_filled_date') {
+                        $errorMsg = 'Fecha de expiración incorrecta. Verifica los datos.';
+                    } elseif ($statusDetail === 'cc_rejected_bad_filled_other') {
+                        $errorMsg = 'Datos de la tarjeta incorrectos. Verifica los datos.';
+                    } elseif ($statusDetail === 'cc_rejected_bad_filled_security_code') {
+                        $errorMsg = 'Código de seguridad incorrecto.';
+                    } elseif ($statusDetail === 'cc_rejected_blacklist') {
+                        $errorMsg = 'La tarjeta está en la lista negra. Usa otra tarjeta.';
+                    } elseif ($statusDetail === 'cc_rejected_call_for_authorize') {
+                        $errorMsg = 'El pago requiere autorización de tu banco.';
+                    } elseif ($statusDetail === 'cc_rejected_card_disabled') {
+                        $errorMsg = 'La tarjeta está desactivada. Llama a tu banco o usa otra tarjeta.';
+                    } elseif ($statusDetail === 'cc_rejected_duplicated_payment') {
+                        $errorMsg = 'Transacción duplicada. Por favor espera unos minutos.';
+                    } elseif ($statusDetail === 'cc_rejected_high_risk') {
+                        $errorMsg = 'Pago rechazado por políticas de prevención de fraude.';
+                    } elseif ($statusDetail === 'cc_rejected_insufficient_amount') {
+                        $errorMsg = 'Fondos insuficientes en la tarjeta.';
+                    } elseif ($statusDetail === 'cc_rejected_invalid_installments') {
+                        $errorMsg = 'Número de cuotas no permitido para esta tarjeta.';
+                    } elseif ($statusDetail === 'cc_rejected_max_attempts') {
+                        $errorMsg = 'Superaste el límite de intentos permitidos. Intenta mañana.';
+                    } elseif ($statusDetail === 'cc_rejected_other_reason') {
+                        $errorMsg = 'El pago fue rechazado por el banco emisor.';
+                    }
+                    
+                    return redirect()->back()->withErrors([
+                        'payment_method' => 'Error en el cobro: ' . $errorMsg
+                    ]);
+                }
+            } catch (\Exception $e) {
+                // Eliminar la reserva si falló la API
+                if (isset($reservation)) {
+                    $reservation->delete();
+                }
+
+                $details = null;
+                if (method_exists($e, 'getApiResponse')) {
+                    $apiResponse = $e->getApiResponse();
+                    if ($apiResponse) {
+                        $details = $apiResponse->getContent();
+                    }
+                }
+                
+                \Illuminate\Support\Facades\Log::error('Error cobrando con tarjeta en MercadoPago: ' . $e->getMessage(), [
+                    'exception' => $e,
+                    'details' => $details
+                ]);
+                
+                $errorMessage = 'No se pudo procesar el pago seguro: ' . $e->getMessage();
+                if ($details) {
+                    $decoded = is_array($details) ? $details : json_decode($details, true);
+                    if (is_array($decoded)) {
+                        if (isset($decoded['message'])) {
+                            $errorMessage .= ' - ' . $decoded['message'];
+                        } elseif (isset($decoded['cause'][0]['description'])) {
+                            $errorMessage .= ' - ' . $decoded['cause'][0]['description'];
+                        } else {
+                            $errorMessage .= ' - ' . json_encode($decoded);
+                        }
+                    } else {
+                        $errorMessage .= ' - ' . substr((string) $details, 0, 100);
+                    }
+                }
+
+                return redirect()->back()->withErrors([
+                    'payment_method' => $errorMessage
+                ]);
+            }
+        }
+
+        if ($validated['payment_method'] === 'mercadopago_wallet') {
             try {
                 $token = config('services.mercadopago.token');
                 if (!$token) {
@@ -215,6 +348,7 @@ class CheckoutController extends Controller
 
                 $client = new PreferenceClient();
                 
+                $appUrl = rtrim(config('app.url'), '/');
                 $preferenceData = [
                     "items" => [
                         [
@@ -226,15 +360,15 @@ class CheckoutController extends Controller
                         ]
                     ],
                     "back_urls" => [
-                        "success" => route('perfil', ['payment_status' => 'success']),
-                        "failure" => route('catalogo', ['payment_status' => 'failure']),
-                        "pending" => route('perfil', ['payment_status' => 'pending']),
+                        "success" => $appUrl . '/perfil?payment_status=success',
+                        "failure" => $appUrl . '/catalogo?payment_status=failure',
+                        "pending" => $appUrl . '/perfil?payment_status=pending',
                     ],
                     "auto_return" => "approved",
                     "external_reference" => (string) $orderNumber,
                 ];
 
-                // Excluir notification_url si es localhost/127.0.0.1 para evitar error 400 de MercadoPago API
+                // Excluir notification_url en local para evitar error de MP si no es HTTPS público
                 $webhookUrl = route('webhooks.mercadopago');
                 if (!str_contains($webhookUrl, 'localhost') && !str_contains($webhookUrl, '127.0.0.1')) {
                     $preferenceData["notification_url"] = $webhookUrl;
@@ -242,13 +376,15 @@ class CheckoutController extends Controller
 
                 $preference = $client->create($preferenceData);
 
-                return redirect()->away($preference->init_point);
+                return Inertia::location($preference->init_point);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('Error creando preferencia en MercadoPago: ' . $e->getMessage(), [
-                    'exception' => $e
-                ]);
+                if (isset($reservation)) {
+                    $reservation->delete();
+                }
+
+                \Illuminate\Support\Facades\Log::error('Error creando preferencia MercadoPago Wallet: ' . $e->getMessage());
                 return redirect()->back()->withErrors([
-                    'payment_method' => 'No se pudo generar el enlace de pago seguro: ' . $e->getMessage()
+                    'payment_method' => 'No se pudo generar el enlace de cobro: ' . $e->getMessage()
                 ]);
             }
         }

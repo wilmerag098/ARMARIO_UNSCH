@@ -16,7 +16,8 @@ import {
     ChevronRight,
     SlidersHorizontal,
     CheckCircle2,
-    X
+    X,
+    AlertTriangle
 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 
@@ -56,6 +57,28 @@ interface CatalogProps {
 
 export default function Catalogo({ products, categories }: CatalogProps) {
     const { auth } = usePage().props;
+
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+    const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 4000);
+    };
+
+    // Detectar si el pago falló al ser redirigido
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const paymentStatus = params.get('payment_status');
+        if (paymentStatus === 'failure') {
+            showToast('No se pudo procesar el pago de tu reserva. Por favor, vuelve a intentarlo.', 'error');
+            
+            // Limpiar parámetro de la URL sin recargar
+            params.delete('payment_status');
+            const newQuery = params.toString();
+            const cleanUrl = window.location.pathname + (newQuery ? `?${newQuery}` : '');
+            window.history.replaceState({}, document.title, cleanUrl);
+        }
+    }, []);
 
     // States for filtering
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -207,6 +230,27 @@ export default function Catalogo({ products, categories }: CatalogProps) {
     return (
         <PublicLayout auth={auth as any}>
             <Head title="Catálogo de Prendas Elegantes - Armario UNSCH" />
+
+            {/* Toast Alertas */}
+            {toast && (
+                <div className={`fixed bottom-5 right-5 z-50 flex items-center gap-3 border-2 text-white px-5 py-4 rounded-2xl shadow-2xl animate-in slide-in-from-bottom-5 duration-300 ${
+                    toast.type === 'error' 
+                        ? 'bg-[#420f14] border-red-500/30' 
+                        : 'bg-[#571e26] border-[#ffb6c5]/35'
+                }`}>
+                    <div className={`p-1.5 rounded-lg text-white ${
+                        toast.type === 'error' ? 'bg-red-600' : 'bg-[#94344c]'
+                    }`}>
+                        {toast.type === 'error' ? <AlertTriangle className="h-5 w-5" /> : <CheckCircle2 className="h-5 w-5" />}
+                    </div>
+                    <div>
+                        <p className="text-sm font-semibold">{toast.message}</p>
+                    </div>
+                    <button onClick={() => setToast(null)} className="ml-2 text-white/50 hover:text-white transition-colors">
+                        <X className="h-4 w-4" />
+                    </button>
+                </div>
+            )}
 
             <div className="bg-[#fdfbfb] min-h-screen py-10">
                 <div className="container mx-auto max-w-screen-xl px-4 md:px-8">
