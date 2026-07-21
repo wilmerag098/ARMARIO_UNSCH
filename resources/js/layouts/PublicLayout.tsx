@@ -17,7 +17,7 @@ import {
     Mail,
     Phone
 } from 'lucide-react';
-import type { ReactNode} from 'react';
+import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import CartDrawer from '@/components/CartDrawer';
 
@@ -140,9 +140,9 @@ export default function PublicLayout({ children, auth }: PublicLayoutProps) {
                         {/* Logo Institucional */}
                         <Link href="/" className="flex items-center gap-3.5 shrink-0">
                             {/* Logo Imagen */}
-                            <img 
-                                src="/images/LOGO.png" 
-                                alt="Logo Armario UNSCH" 
+                            <img
+                                src="/images/LOGO.png"
+                                alt="Logo Armario UNSCH"
                                 className="h-10 w-auto object-contain"
                                 onError={(e) => {
                                     // Fallback if image fails to load
@@ -199,7 +199,7 @@ export default function PublicLayout({ children, auth }: PublicLayoutProps) {
                             </Link>
 
                             {/* Carrito */}
-                            <button 
+                            <button
                                 onClick={() => setIsCartOpen(true)}
                                 className="flex flex-col items-center hover:text-[#dfb279] transition-colors group cursor-pointer relative focus:outline-none"
                             >
@@ -530,7 +530,7 @@ export default function PublicLayout({ children, auth }: PublicLayoutProps) {
                             </p>
                             {/* Social Icons */}
                             <div className="flex gap-3 pt-2">
-                                <a href="#" className="h-8.5 w-8.5 rounded-full bg-[#290a0f] hover:bg-[#94344c] hover:text-white border border-[#dfb279]/15 flex items-center justify-center transition-all">
+                                <a href="https://www.facebook.com/profile.php?id=61592040264188" className="h-8.5 w-8.5 rounded-full bg-[#290a0f] hover:bg-[#94344c] hover:text-white border border-[#dfb279]/15 flex items-center justify-center transition-all">
                                     <Facebook size={15} />
                                 </a>
                                 <a href="#" className="h-8.5 w-8.5 rounded-full bg-[#290a0f] hover:bg-[#94344c] hover:text-white border border-[#dfb279]/15 flex items-center justify-center transition-all">
