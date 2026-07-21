@@ -4,7 +4,7 @@ import {
     Check, CreditCard, Lock, AlertCircle, 
     Calendar, User as UserIcon, Mail, Shield, Sparkles, 
     GraduationCap, Phone, CheckCircle2, RefreshCw, Key, Info, Tag, X, FileText,
-    MapPin, Truck, ShoppingBag
+    MapPin, Truck, ShoppingBag, Wallet, ShieldCheck, QrCode, Zap, Smartphone, KeyRound, HelpCircle
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
@@ -32,7 +32,87 @@ export default function Checkout({
     
     // Auth Mode: 'register' or 'login' for non-logged in users
     const [authMode, setAuthMode] = useState<'register' | 'login'>('register');
-    const [mpMethod, setMpMethod] = useState<'card' | 'wallet'>('card');
+    const [mpMethod, setMpMethod] = useState<'yape' | 'card' | 'wallet'>('yape');
+    const [yapeMode, setYapeMode] = useState<'otp' | 'qr'>('otp');
+    const [yapePhone, setYapePhone] = useState('');
+    const [yapeApprovalCode, setYapeApprovalCode] = useState('');
+    const [isPreferenceLoading, setIsPreferenceLoading] = useState(false);
+
+    const handlePreferencePaymentSubmit = async (selectedMethod: 'mercadopago_yape' | 'mercadopago_wallet' = 'mercadopago_yape') => {
+        if (!validateCheckoutForm()) {
+            return;
+        }
+
+        setIsPreferenceLoading(true);
+
+        const payload = {
+            product_id: data.product_id,
+            inventory_id: data.inventory_id,
+            color: data.color,
+            start_date: data.start_date,
+            end_date: data.end_date,
+            accessories: data.accessories,
+            payment_method: selectedMethod,
+            name: data.name || auth.user?.name || '',
+            last_name: data.last_name || auth.user?.last_name || '',
+            dni: data.dni || auth.user?.dni || '',
+            university_id: data.university_id || auth.user?.university_id || '',
+            phone: data.phone || auth.user?.phone || '',
+            email: data.email || auth.user?.email || '',
+            yape_phone: yapePhone,
+            yape_approval_code: yapeMode === 'otp' ? yapeApprovalCode : '',
+        };
+
+        if (!auth.user) {
+            // Registrar primero
+            router.post('/checkout/register', {
+                name: data.name,
+                last_name: data.last_name,
+                dni: data.dni,
+                university_id: data.university_id,
+                phone: data.phone,
+                email: data.email,
+                password: data.password
+            }, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    // Una vez registrado e iniciado sesión automáticamente, enviar el checkout
+                    router.post('/checkout', payload, {
+                        preserveScroll: true,
+                        onSuccess: () => {
+                            clearCart();
+                        },
+                        onError: (errs) => {
+                            alert(Object.values(errs).join('\n') || 'Ocurrió un error al procesar el pago.');
+                        },
+                        onFinish: () => {
+                            setIsPreferenceLoading(false);
+                        }
+                    });
+                },
+                onError: (errs) => {
+                    alert(Object.values(errs).join('\n') || 'Ocurrió un error al registrar tus datos.');
+                },
+                onFinish: () => {
+                    setIsPreferenceLoading(false);
+                }
+            });
+        } else {
+            // Usuario ya logueado
+            router.post('/checkout', payload, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    clearCart();
+                },
+                onError: (errs) => {
+                    alert(Object.values(errs).join('\n') || 'Ocurrió un error al procesar el pago.');
+                },
+                onFinish: () => {
+                    setIsPreferenceLoading(false);
+                }
+            });
+        }
+    };
     
     // Login form local state
     const [loginData, setLoginData] = useState({ email: '', password: '' });
@@ -243,8 +323,11 @@ export default function Checkout({
                 return false;
             }
         } else {
-            if (!data.name || !data.last_name || !data.dni || !data.university_id || !data.phone || !data.email) {
-                alert('Por favor, completa todos los campos de datos personales obligatorios.');
+            const currentName = data.name || auth.user?.name;
+            const currentEmail = data.email || auth.user?.email;
+
+            if (!currentName || !currentEmail) {
+                alert('Por favor, ingresa tu nombre y correo electrónico.');
 
                 return false;
             }
@@ -311,59 +394,7 @@ export default function Checkout({
         }
     };
 
-    const handleWalletPaymentSubmit = async () => {
-        if (!validateCheckoutForm()) {
-            return;
-        }
 
-        const payload = {
-            product_id: data.product_id,
-            inventory_id: data.inventory_id,
-            color: data.color,
-            start_date: data.start_date,
-            end_date: data.end_date,
-            accessories: data.accessories,
-            payment_method: 'mercadopago_wallet',
-            name: data.name,
-            last_name: data.last_name,
-            dni: data.dni,
-            university_id: data.university_id,
-            phone: data.phone,
-            email: data.email,
-        };
-
-        if (!auth.user) {
-            // Registrar primero
-            router.post('/checkout/register', {
-                name: data.name,
-                last_name: data.last_name,
-                dni: data.dni,
-                university_id: data.university_id,
-                phone: data.phone,
-                email: data.email,
-                password: data.password
-            }, {
-                preserveScroll: true,
-                onSuccess: () => {
-                    // Una vez registrado e iniciado sesión automáticamente, enviar el checkout
-                    router.post('/checkout', payload, {
-                        preserveScroll: true,
-                        onSuccess: () => {
-                            clearCart();
-                        }
-                    });
-                }
-            });
-        } else {
-            // Usuario ya logueado
-            router.post('/checkout', payload, {
-                preserveScroll: true,
-                onSuccess: () => {
-                    clearCart();
-                }
-            });
-        }
-    };
 
     const handleLoginSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -911,76 +942,328 @@ export default function Checkout({
                                         </div>
                                     )}
 
-                                    {/* Selector de sub-método de Mercado Pago */}
-                                    <div className="flex gap-2 p-1.5 bg-[#fbf2f4] rounded-2xl border border-[#f5dce0]/65 text-[11px] font-bold">
+                                    {/* Selector de sub-método de Pago (Yape, Tarjeta, Billetera MP) */}
+                                    <div className="grid grid-cols-3 gap-1.5 p-1.5 bg-[#fbf2f4] rounded-2xl border border-[#f5dce0]/80 text-[10px] md:text-[11px] font-bold shadow-inner">
+                                        <button
+                                            type="button"
+                                            onClick={() => setMpMethod('yape')}
+                                            className={`py-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 relative ${
+                                                mpMethod === 'yape'
+                                                    ? 'bg-[#782331] text-white shadow-md font-extrabold scale-[1.02]'
+                                                    : 'text-[#805056] hover:text-[#4a1018] hover:bg-white/50'
+                                            }`}
+                                        >
+                                            <QrCode size={14} className={mpMethod === 'yape' ? 'text-[#ffb6c5]' : 'text-[#782331]'} />
+                                            <span>Yape</span>
+                                            <span className="hidden sm:inline-block text-[8px] bg-[#00D396] text-black font-black px-1.5 py-0.2 rounded-full uppercase tracking-tighter shadow-xs">
+                                                QR
+                                            </span>
+                                        </button>
+
                                         <button
                                             type="button"
                                             onClick={() => setMpMethod('card')}
-                                            className={`flex-1 py-2.5 rounded-xl transition-all cursor-pointer ${
+                                            className={`py-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                                                 mpMethod === 'card'
-                                                    ? 'bg-[#782331] text-white shadow-sm font-extrabold'
-                                                    : 'text-[#805056] hover:text-[#4a1018]'
+                                                    ? 'bg-[#782331] text-white shadow-md font-extrabold scale-[1.02]'
+                                                    : 'text-[#805056] hover:text-[#4a1018] hover:bg-white/50'
                                             }`}
                                         >
-                                            Tarjeta Crédito/Débito
+                                            <CreditCard size={14} className={mpMethod === 'card' ? 'text-white' : 'text-[#782331]'} />
+                                            <span>Tarjeta</span>
                                         </button>
+
                                         <button
                                             type="button"
                                             onClick={() => setMpMethod('wallet')}
-                                            className={`flex-1 py-2.5 rounded-xl transition-all cursor-pointer ${
+                                            className={`py-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                                                 mpMethod === 'wallet'
-                                                    ? 'bg-[#782331] text-white shadow-sm font-extrabold'
-                                                    : 'text-[#805056] hover:text-[#4a1018]'
+                                                    ? 'bg-[#782331] text-white shadow-md font-extrabold scale-[1.02]'
+                                                    : 'text-[#805056] hover:text-[#4a1018] hover:bg-white/50'
                                             }`}
                                         >
-                                            Billetera Mercado Pago
+                                            <Wallet size={14} className={mpMethod === 'wallet' ? 'text-white' : 'text-[#782331]'} />
+                                            <span>Billetera MP</span>
                                         </button>
                                     </div>
 
                                     {/* Renderizado condicional según sub-método elegido */}
-                                    {mpMethod === 'card' ? (
-                                        <div className="pt-2 relative z-10 select-none">
-                                            {mercadopago_public_key ? (
-                                                <CardPayment
-                                                    initialization={{
-                                                        amount: total,
-                                                        payer: {
-                                                            email: data.email || auth.user?.email || '',
-                                                        }
-                                                    }}
-                                                    onSubmit={handleCardPaymentSubmit}
-                                                    onError={(error) => {
-                                                        console.error('Error en el Brick de Mercado Pago:', error);
-                                                    }}
-                                                    customization={{
-                                                        visual: {
-                                                            style: {
-                                                                theme: 'flat',
-                                                            }
-                                                        },
-                                                        paymentMethods: {
-                                                            maxInstallments: 12,
-                                                        }
-                                                    }}
-                                                />
+                                    {mpMethod === 'yape' ? (
+                                        <div className="pt-2 space-y-4">
+                                            {/* Banner Ilustrativo de Yape Directo / QR */}
+                                            <div className="relative overflow-hidden bg-gradient-to-br from-[#4c1d68] via-[#782331] to-[#8e2a39] text-white p-4.5 rounded-2xl shadow-md border border-[#9d3c56]/30">
+                                                <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-[#00D396]/15 rounded-full blur-2xl pointer-events-none"></div>
+                                                
+                                                <div className="flex justify-between items-start mb-3 relative z-10">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="p-1.5 bg-[#00D396] text-slate-900 rounded-lg shrink-0">
+                                                            <Zap size={15} className="fill-current" />
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-xs uppercase font-extrabold tracking-wider text-white block">Yape Directo (Código de Aprobación)</span>
+                                                            <span className="text-[9px] text-[#fbd5db] block font-medium">Procesamiento instantáneo en línea</span>
+                                                        </div>
+                                                    </div>
+                                                    <span className="text-[9px] font-black bg-[#00D396] text-slate-900 px-2 py-0.5 rounded-full tracking-wider uppercase shadow-xs">
+                                                        Sin Redirección
+                                                    </span>
+                                                </div>
+
+                                                <div className="flex justify-between items-end pt-2 border-t border-white/10 relative z-10">
+                                                    <div>
+                                                        <div className="text-[9px] text-[#f5dce0]/80 font-mono tracking-widest uppercase">Monto a Yapear</div>
+                                                        <div className="text-lg font-black tracking-tight text-white">S/ {total.toFixed(2)}</div>
+                                                    </div>
+                                                    <div className="text-right flex gap-1">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setYapeMode('otp')}
+                                                            className={`px-2 py-1 rounded-lg text-[9px] font-extrabold transition-all cursor-pointer ${yapeMode === 'otp' ? 'bg-white text-[#782331] shadow-xs' : 'bg-black/20 text-white/80 hover:bg-black/40'}`}
+                                                        >
+                                                            Código OTP
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setYapeMode('qr')}
+                                                            className={`px-2 py-1 rounded-lg text-[9px] font-extrabold transition-all cursor-pointer ${yapeMode === 'qr' ? 'bg-white text-[#782331] shadow-xs' : 'bg-black/20 text-white/80 hover:bg-black/40'}`}
+                                                        >
+                                                            Código QR
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {yapeMode === 'otp' ? (
+                                                <div className="space-y-3 bg-[#fdf6f7] border border-[#f5dce0]/80 rounded-2xl p-4">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-xs font-extrabold text-[#782331] flex items-center gap-1.5">
+                                                            <KeyRound size={15} /> Ingresa tus Datos de Yape
+                                                        </span>
+                                                        <span className="text-[9px] text-[#805056] font-medium bg-white px-2 py-0.5 rounded-md border border-[#f5dce0]">
+                                                            6 dígitos Yape
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                        <div>
+                                                            <label className="block text-[10px] font-bold text-[#805056] uppercase mb-1">
+                                                                Celular Yape *
+                                                            </label>
+                                                            <div className="relative">
+                                                                <Smartphone className="absolute left-3 top-2.5 text-[#782331]" size={15} />
+                                                                <input
+                                                                    type="tel"
+                                                                    maxLength={9}
+                                                                    placeholder="Ej. 987654321"
+                                                                    value={yapePhone}
+                                                                    onChange={(e) => setYapePhone(e.target.value.replace(/\D/g, ''))}
+                                                                    className="w-full pl-9 pr-3 py-2 text-xs font-semibold bg-white border border-[#f5dce0] rounded-xl focus:ring-2 focus:ring-[#782331] focus:border-transparent outline-none"
+                                                                />
+                                                            </div>
+                                                        </div>
+
+                                                        <div>
+                                                            <label className="block text-[10px] font-bold text-[#805056] uppercase mb-1">
+                                                                Código de Aprobación *
+                                                            </label>
+                                                            <div className="relative">
+                                                                <KeyRound className="absolute left-3 top-2.5 text-[#782331]" size={15} />
+                                                                <input
+                                                                    type="text"
+                                                                    maxLength={6}
+                                                                    placeholder="Ej. 123456"
+                                                                    value={yapeApprovalCode}
+                                                                    onChange={(e) => setYapeApprovalCode(e.target.value.replace(/\D/g, ''))}
+                                                                    className="w-full pl-9 pr-3 py-2 text-xs font-extrabold font-mono tracking-widest text-[#782331] bg-white border border-[#f5dce0] rounded-xl focus:ring-2 focus:ring-[#782331] focus:border-transparent outline-none"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Guía rápida de obtención del Código de Aprobación */}
+                                                    <div className="p-2.5 bg-white rounded-xl border border-[#f5dce0]/60 text-[10px] text-[#805056] space-y-1">
+                                                        <div className="font-bold text-[#782331] flex items-center gap-1">
+                                                            <HelpCircle size={12} /> ¿Dónde encuentro mi Código de Aprobación?
+                                                        </div>
+                                                        <ol className="list-decimal list-inside space-y-0.5 leading-relaxed pl-1 text-[9.5px]">
+                                                            <li>Abre tu App <strong>Yape</strong> en tu celular.</li>
+                                                            <li>Toca el menú <strong>☰</strong> (arriba a la izquierda).</li>
+                                                            <li>Selecciona <strong>"Código de aprobación"</strong> y copia los 6 dígitos.</li>
+                                                        </ol>
+                                                    </div>
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handlePreferencePaymentSubmit('mercadopago_yape')}
+                                                        disabled={isPreferenceLoading || !yapeApprovalCode || yapeApprovalCode.length < 6}
+                                                        className="w-full bg-gradient-to-r from-[#6b1e2c] via-[#782331] to-[#8e2a39] hover:from-[#571622] hover:to-[#782331] text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2.5 transition-all shadow-md shadow-[#782331]/25 hover:shadow-lg disabled:opacity-50 tracking-wider text-xs uppercase cursor-pointer"
+                                                    >
+                                                        {isPreferenceLoading ? (
+                                                            <>
+                                                                <RefreshCw className="animate-spin text-[#ffb6c5]" size={16} />
+                                                                <span>Procesando Código de Yape...</span>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Zap size={16} className="text-[#00D396] fill-current" />
+                                                                <span>CONFIRMAR YAPEO S/ {total.toFixed(2)}</span>
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                </div>
                                             ) : (
-                                                <div className="p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl text-xs font-semibold text-center">
-                                                    Cargando pasarela de pagos segura...
+                                                <div className="space-y-4">
+                                                    {/* Guía Interactiva de 3 Pasos QR */}
+                                                    <div className="bg-[#fdf6f7] border border-[#f5dce0]/80 rounded-2xl p-4 text-xs space-y-3">
+                                                        <div className="flex items-center gap-2 text-[#782331] font-bold">
+                                                            <Sparkles size={15} />
+                                                            <span>¿Cómo funciona el pago con QR Yape?</span>
+                                                        </div>
+                                                        <div className="grid grid-cols-3 gap-2 text-center pt-1">
+                                                            <div className="bg-white p-2.5 rounded-xl border border-[#f5dce0]/60 shadow-2xs">
+                                                                <span className="block text-[10px] font-extrabold text-[#782331]">1. Haz Clic</span>
+                                                                <span className="text-[9px] text-[#805056] leading-tight block mt-0.5">Inicia el pago seguro</span>
+                                                            </div>
+                                                            <div className="bg-white p-2.5 rounded-xl border border-[#f5dce0]/60 shadow-2xs">
+                                                                <span className="block text-[10px] font-extrabold text-[#782331]">2. Escanea QR</span>
+                                                                <span className="text-[9px] text-[#805056] leading-tight block mt-0.5">Desde tu app Yape</span>
+                                                            </div>
+                                                            <div className="bg-white p-2.5 rounded-xl border border-[#f5dce0]/60 shadow-2xs">
+                                                                <span className="block text-[10px] font-extrabold text-[#782331]">3. Confirma</span>
+                                                                <span className="text-[9px] text-[#805056] leading-tight block mt-0.5">Reserva inmediata</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Botón QR Yape */}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handlePreferencePaymentSubmit('mercadopago_yape')}
+                                                        disabled={isPreferenceLoading}
+                                                        className="w-full bg-gradient-to-r from-[#6b1e2c] via-[#782331] to-[#8e2a39] hover:from-[#571622] hover:to-[#782331] text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2.5 transition-all shadow-md shadow-[#782331]/25 hover:shadow-lg disabled:opacity-50 tracking-wider text-xs uppercase cursor-pointer"
+                                                    >
+                                                        {isPreferenceLoading ? (
+                                                            <>
+                                                                <RefreshCw className="animate-spin text-[#ffb6c5]" size={16} />
+                                                                <span>Generando QR de Yape y Redirigiendo...</span>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <QrCode size={16} className="text-[#ffb6c5]" />
+                                                                <span>PAGAR S/ {total.toFixed(2)} CON QR DE YAPE</span>
+                                                            </>
+                                                        )}
+                                                    </button>
                                                 </div>
                                             )}
                                         </div>
+                                    ) : mpMethod === 'card' ? (
+                                        <div className="pt-2 space-y-4">
+                                            {/* Tarjeta Visual Decorativa de Seguridad */}
+                                            <div className="relative overflow-hidden bg-gradient-to-br from-[#4a1018] via-[#782331] to-[#8e2a39] text-white p-4.5 rounded-2xl shadow-md border border-[#a83a4c]/30">
+                                                <div className="absolute -right-8 -bottom-8 w-28 h-28 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
+                                                
+                                                <div className="flex justify-between items-start mb-3 relative z-10">
+                                                    <div className="flex items-center gap-2">
+                                                        <ShieldCheck size={16} className="text-[#ffb6c5]" />
+                                                        <span className="text-[10px] uppercase font-extrabold tracking-widest text-[#fbd5db]">Pasarela Segura</span>
+                                                    </div>
+                                                    <span className="text-[9px] font-bold bg-white/15 px-2.5 py-0.5 rounded-full backdrop-blur-xs text-white border border-white/20">
+                                                        SSL 256-bit
+                                                    </span>
+                                                </div>
+
+                                                <div className="flex justify-between items-end pt-1 relative z-10">
+                                                    <div>
+                                                        <div className="text-[9px] text-[#f5dce0]/80 font-mono tracking-widest uppercase">Monto a Autorizar</div>
+                                                        <div className="text-base font-extrabold tracking-tight text-white">S/ {total.toFixed(2)}</div>
+                                                    </div>
+                                                    <div className="flex gap-1.5 items-center opacity-90">
+                                                        <span className="text-[9px] font-mono font-bold text-white/80 bg-black/20 px-2 py-0.5 rounded border border-white/10">
+                                                            VISA • MC • AMEX
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Mercado Pago Card Brick con Customización de Estilo en Vino Tinto */}
+                                            <div className="relative z-10 select-none">
+                                                {mercadopago_public_key ? (
+                                                    <CardPayment
+                                                        initialization={{
+                                                            amount: total,
+                                                            payer: {
+                                                                email: data.email || auth.user?.email || '',
+                                                            }
+                                                        }}
+                                                        onSubmit={handleCardPaymentSubmit}
+                                                        onError={(error) => {
+                                                            console.error('Error en el Brick de Mercado Pago:', error);
+                                                        }}
+                                                        customization={{
+                                                            visual: {
+                                                                style: {
+                                                                    theme: 'flat',
+                                                                    customVariables: {
+                                                                        baseColor: '#782331',
+                                                                        baseColorFirstVariant: '#8e2a39',
+                                                                        baseColorSecondVariant: '#5c1a25',
+                                                                        outlinePrimaryColor: '#782331',
+                                                                        borderRadiusMedium: '12px',
+                                                                        borderRadiusLarge: '16px',
+                                                                        inputFocusedBoxShadow: '0 0 0 2px rgba(120, 35, 49, 0.2)',
+                                                                    }
+                                                                }
+                                                            },
+                                                            paymentMethods: {
+                                                                maxInstallments: 12,
+                                                            }
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <div className="p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl text-xs font-semibold text-center flex items-center justify-center gap-2">
+                                                        <RefreshCw className="animate-spin text-amber-600" size={14} />
+                                                        <span>Cargando pasarela de pagos segura...</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
                                     ) : (
-                                        <div className="pt-2">
+                                        <div className="pt-2 space-y-4">
+                                            <div className="bg-[#fdf6f7] border border-[#f5dce0]/80 rounded-2xl p-4 text-xs space-y-3">
+                                                <div className="flex items-center gap-2 text-[#782331] font-bold">
+                                                    <Sparkles size={16} />
+                                                    <span>Pago Instantáneo con Mercado Pago Wallet</span>
+                                                </div>
+                                                <p className="text-[#805056] text-[11px] leading-relaxed">
+                                                    Usa tu saldo disponible en tu cuenta de Mercado Pago o tus tarjetas guardadas sin necesidad de volver a digitar los datos.
+                                                </p>
+                                                <div className="grid grid-cols-3 gap-2 pt-1 text-center">
+                                                    <div className="bg-[#fff] p-2 rounded-xl border border-[#f5dce0]/60">
+                                                        <span className="block text-[10px] font-bold text-[#4a1018]">1. Clic</span>
+                                                        <span className="text-[9px] text-[#805056]">Iniciar pago</span>
+                                                    </div>
+                                                    <div className="bg-[#fff] p-2 rounded-xl border border-[#f5dce0]/60">
+                                                        <span className="block text-[10px] font-bold text-[#4a1018]">2. Inicia Sesión</span>
+                                                        <span className="text-[9px] text-[#805056]">En Mercado Pago</span>
+                                                    </div>
+                                                    <div className="bg-[#fff] p-2 rounded-xl border border-[#f5dce0]/60">
+                                                        <span className="block text-[10px] font-bold text-[#4a1018]">3. Confirma</span>
+                                                        <span className="text-[9px] text-[#805056]">¡Y listo!</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
                                             <button
                                                 type="button"
-                                                onClick={handleWalletPaymentSubmit}
-                                                disabled={processing}
+                                                onClick={() => handlePreferencePaymentSubmit('mercadopago_wallet')}
+                                                disabled={isPreferenceLoading}
                                                 className="w-full bg-[#782331] hover:bg-[#8e2a39] text-white font-extrabold py-4 rounded-2xl flex items-center justify-center gap-2.5 transition-all shadow-md shadow-[#782331]/20 hover:shadow-lg disabled:opacity-50 tracking-wider text-xs uppercase cursor-pointer"
                                             >
-                                                {processing ? (
+                                                {isPreferenceLoading ? (
                                                     <>
                                                         <RefreshCw className="animate-spin" size={14} />
-                                                        <span>Procesando...</span>
+                                                        <span>Procesando Mercado Pago...</span>
                                                     </>
                                                 ) : (
                                                     <>
@@ -989,9 +1272,6 @@ export default function Checkout({
                                                     </>
                                                 )}
                                             </button>
-                                            <p className="text-[10px] text-[#805056]/80 text-center mt-2.5 leading-normal">
-                                                Te redirigiremos a Mercado Pago de forma segura para ingresar con tu cuenta (e-mail de comprador) y autorizar el pago con tu saldo ficticio.
-                                            </p>
                                         </div>
                                     )}
 

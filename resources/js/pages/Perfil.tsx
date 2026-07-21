@@ -92,8 +92,12 @@ export default function Perfil({ reservations, favorites }: PerfilProps) {
         if (paymentStatus) {
             setTimeout(() => {
                 if (paymentStatus === 'success') {
+                    localStorage.removeItem('armario_rental_cart');
+                    window.dispatchEvent(new CustomEvent('cart-changed'));
                     showToast('¡Pago realizado con éxito! Tu reserva ha sido confirmada.', 'success');
                 } else if (paymentStatus === 'pending') {
+                    localStorage.removeItem('armario_rental_cart');
+                    window.dispatchEvent(new CustomEvent('cart-changed'));
                     showToast('Tu pago está en proceso de verificación por Mercado Pago.', 'success');
                 } else if (paymentStatus === 'failure') {
                     showToast('No se pudo completar el pago. Por favor, inténtalo de nuevo.', 'error');

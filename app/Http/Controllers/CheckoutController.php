@@ -56,13 +56,15 @@ class CheckoutController extends Controller
             'accessories' => 'nullable|array',
             'accessories.*.product_id' => 'required|exists:products,id',
             'accessories.*.inventory_id' => 'required|exists:inventories,id',
-            'payment_method' => 'required|string|in:yape,plin,mercadopago_card,mercadopago_wallet',
+            'payment_method' => 'required|string|in:yape,plin,mercadopago_card,mercadopago_wallet,mercadopago_yape',
             'payment_reference' => 'required_if:payment_method,yape,plin|nullable|string|min:8|max:20',
             // Campos para integración avanzada de Mercado Pago
             'payment_token' => 'required_if:payment_method,mercadopago_card|nullable|string',
             'payment_method_id' => 'required_if:payment_method,mercadopago_card|nullable|string',
             'installments' => 'required_if:payment_method,mercadopago_card|nullable|integer',
             'issuer_id' => 'nullable|string',
+            'yape_phone' => 'nullable|string|max:20',
+            'yape_approval_code' => 'nullable|string|max:10',
             // Opcionalmente actualizar perfil de usuario si es enviado
             'name' => 'nullable|string|max:255',
             'last_name' => 'nullable|string|max:255',
@@ -333,7 +335,7 @@ class CheckoutController extends Controller
             }
         }
 
-        if ($validated['payment_method'] === 'mercadopago_wallet') {
+        if (in_array($validated['payment_method'], ['mercadopago_wallet', 'mercadopago_yape'])) {
             try {
                 $token = config('services.mercadopago.token');
                 if (!$token) {
@@ -342,13 +344,72 @@ class CheckoutController extends Controller
 
                 MercadoPagoConfig::setAccessToken($token);
 
-                if (config('app.env') === 'local') {
-                    MercadoPagoConfig::setRuntimeEnviroment(MercadoPagoConfig::LOCAL);
+                // Si se seleccionó Yape y se proporcionó el Código de Aprobación OTP, procesar cobro directo
+                if ($validated['payment_method'] === 'mercadopago_yape' && !empty($validated['yape_approval_code'])) {
+                    $paymentClient = new PaymentClient();
+
+                    $yapePhoneNum = preg_replace('/\D/', '', $validated['yape_phone'] ?? $validated['phone'] ?? '');
+                    if (empty($yapePhoneNum)) {
+                        $yapePhoneNum = '999999999';
+                    }
+
+                    $paymentRequest = [
+                        "transaction_amount" => (float) $totalAmount,
+                        "description" => "Alquiler de Prenda - Orden " . $orderNumber,
+                        "payment_method_id" => "yape",
+                        "token" => trim($validated['yape_approval_code']),
+                        "payer" => [
+                            "email" => $validated['email'] ?? $user->email,
+                            "phone" => [
+                                "area_code" => "51",
+                                "number" => $yapePhoneNum,
+                            ],
+                        ],
+                        "external_reference" => (string) $orderNumber,
+                    ];
+
+                    try {
+                        $payment = $paymentClient->create($paymentRequest);
+
+                        if ($payment->status === 'approved') {
+                            $reservation->update([
+                                'payment_status' => 'pagado',
+                                'status' => 'confirmada',
+                                'payment_reference' => (string) $payment->id,
+                            ]);
+
+                            return redirect()->route('perfil', ['payment_status' => 'success']);
+                        } else {
+                            if (isset($reservation)) {
+                                $reservation->delete();
+                            }
+
+                            $statusDetail = $payment->status_detail ?? '';
+                            $errorMessage = match ($statusDetail) {
+                                'cc_rejected_invalid_otp', 'invalid_yape_otp' => 'El código de aprobación de Yape es incorrecto o venció.',
+                                'cc_rejected_insufficient_amount' => 'Tu cuenta de Yape no cuenta con saldo suficiente.',
+                                'cc_rejected_high_risk' => 'El pago fue rechazado por seguridad en tu App Yape.',
+                                default => 'No se pudo procesar el Yapeo (' . ($payment->status_detail ?? 'rechazado') . '). Verifica tu celular y código.',
+                            };
+
+                            return redirect()->back()->withErrors([
+                                'payment_method' => $errorMessage
+                            ]);
+                        }
+                    } catch (\Exception $e) {
+                        \Illuminate\Support\Facades\Log::warning('Error en cobro directo Yape OTP: ' . $e->getMessage());
+                        if (isset($reservation)) {
+                            $reservation->delete();
+                        }
+                        return redirect()->back()->withErrors([
+                            'payment_method' => 'No se pudo procesar el código de Yape: ' . $e->getMessage()
+                        ]);
+                    }
                 }
 
                 $client = new PreferenceClient();
                 
-                $appUrl = rtrim(config('app.url'), '/');
+                $appUrl = str_replace('127.0.0.1', 'localhost', rtrim($request->schemeAndHttpHost(), '/'));
                 $preferenceData = [
                     "items" => [
                         [
@@ -364,9 +425,18 @@ class CheckoutController extends Controller
                         "failure" => $appUrl . '/catalogo?payment_status=failure',
                         "pending" => $appUrl . '/perfil?payment_status=pending',
                     ],
-                    "auto_return" => "approved",
                     "external_reference" => (string) $orderNumber,
                 ];
+
+                if (str_starts_with($appUrl, 'https')) {
+                    $preferenceData["auto_return"] = "approved";
+                }
+
+                if ($validated['payment_method'] === 'mercadopago_yape') {
+                    $preferenceData["payment_methods"] = [
+                        "default_payment_method_id" => "yape"
+                    ];
+                }
 
                 // Excluir notification_url en local para evitar error de MP si no es HTTPS público
                 $webhookUrl = route('webhooks.mercadopago');
@@ -374,17 +444,46 @@ class CheckoutController extends Controller
                     $preferenceData["notification_url"] = $webhookUrl;
                 }
 
-                $preference = $client->create($preferenceData);
+                try {
+                    $preference = $client->create($preferenceData);
+                } catch (\Exception $subEx) {
+                    if (isset($preferenceData["payment_methods"])) {
+                        unset($preferenceData["payment_methods"]);
+                        $preference = $client->create($preferenceData);
+                    } else {
+                        throw $subEx;
+                    }
+                }
 
-                return Inertia::location($preference->init_point);
+                $initPoint = (str_starts_with($token, 'TEST-') && !empty($preference->sandbox_init_point))
+                    ? $preference->sandbox_init_point
+                    : ($preference->init_point ?? $preference->sandbox_init_point);
+
+                return Inertia::location($initPoint);
             } catch (\Exception $e) {
                 if (isset($reservation)) {
                     $reservation->delete();
                 }
 
-                \Illuminate\Support\Facades\Log::error('Error creando preferencia MercadoPago Wallet: ' . $e->getMessage());
+                $apiResponseDetails = null;
+                if (method_exists($e, 'getApiResponse')) {
+                    $apiResponseDetails = $e->getApiResponse()?->getContent();
+                }
+
+                \Illuminate\Support\Facades\Log::error('Error creando preferencia MercadoPago (' . $validated['payment_method'] . '): ' . $e->getMessage(), [
+                    'details' => $apiResponseDetails
+                ]);
+
+                $errorText = 'No se pudo generar el enlace de cobro con Mercado Pago: ' . $e->getMessage();
+                if ($apiResponseDetails) {
+                    $decoded = is_array($apiResponseDetails) ? $apiResponseDetails : json_decode($apiResponseDetails, true);
+                    if (is_array($decoded) && isset($decoded['message'])) {
+                        $errorText .= ' (' . $decoded['message'] . ')';
+                    }
+                }
+
                 return redirect()->back()->withErrors([
-                    'payment_method' => 'No se pudo generar el enlace de cobro: ' . $e->getMessage()
+                    'payment_method' => $errorText
                 ]);
             }
         }
