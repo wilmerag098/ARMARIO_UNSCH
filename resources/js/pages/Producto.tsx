@@ -36,44 +36,51 @@ export default function Producto({ product, relatedProducts = [] }: { product: a
         return tomorrow.toISOString().split('T')[0];
     };
 
-    const getThreeDaysLaterString = () => {
-        const date = new Date();
-        date.setDate(date.getDate() + 4);
-
-        return date.toISOString().split('T')[0];
-    };
-
-    // Date states
+    // Date states (default to 1 day rental period)
     const [startDate, setStartDate] = useState(getTomorrowString());
-    const [endDate, setEndDate] = useState(getThreeDaysLaterString());
+    const [endDate, setEndDate] = useState(getTomorrowString());
 
     const getDaysDifference = (start: string, end: string) => {
-        const s = new Date(start);
-        const e = new Date(end);
-        const diff = e.getTime() - s.getTime();
-        const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+        if (!start || !end) return 1;
+        const [sY, sM, sD] = start.split('-').map(Number);
+        const [eY, eM, eD] = end.split('-').map(Number);
+        if (isNaN(sY) || isNaN(eY)) return 1;
+        const sDate = Date.UTC(sY, sM - 1, sD);
+        const eDate = Date.UTC(eY, eM - 1, eD);
+        const diffMs = eDate - sDate;
+        const days = Math.round(diffMs / (1000 * 60 * 60 * 24)) + 1;
 
         return days > 0 ? days : 1;
     };
 
     const formatDate = (dateStr: string) => {
         if (!dateStr) {
-return '';
-}
+            return '';
+        }
 
         const parts = dateStr.split('-');
 
         if (parts.length !== 3) {
-return dateStr;
-}
+            return dateStr;
+        }
 
         return `${parts[2]}/${parts[1]}/${parts[0]}`;
     };
 
     const rentDays = getDaysDifference(startDate, endDate);
-    const pricePerDay = product?.discount_percent > 0
-        ? parseFloat(product?.discounted_price_per_day || '0')
-        : parseFloat(product?.price_per_day || '0');
+    const pricePerDay = parseFloat(
+        (product?.discount_percent > 0 || (product?.discounted_price_per_day && parseFloat(product.discounted_price_per_day) < parseFloat(product?.price_per_day || '0')))
+            ? (product?.discounted_price_per_day || product?.price_per_day || '0')
+            : (product?.price_per_day || '0')
+    );
+
+    const parsedDeposit = parseFloat(product?.security_deposit);
+    const securityDeposit = (!isNaN(parsedDeposit) && parsedDeposit > 0)
+        ? parsedDeposit
+        : (pricePerDay * 0.20);
+
+    const rentalSubtotal = pricePerDay * rentDays;
+    const totalCost = rentalSubtotal + securityDeposit;
 
     const handleToggleFav = (productId: number) => {
         if (!auth?.user) {
@@ -477,12 +484,11 @@ return;
                                             value={startDate}
                                             min={getTomorrowString()}
                                             onChange={(e) => {
-                                                setStartDate(e.target.value);
+                                                const newStart = e.target.value;
+                                                setStartDate(newStart);
 
-                                                if (new Date(e.target.value) >= new Date(endDate)) {
-                                                    const nextDay = new Date(e.target.value);
-                                                    nextDay.setDate(nextDay.getDate() + 3);
-                                                    setEndDate(nextDay.toISOString().split('T')[0]);
+                                                if (new Date(newStart) > new Date(endDate)) {
+                                                    setEndDate(newStart);
                                                 }
                                             }}
                                             className="w-full bg-black/25 border border-white/10 text-white text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#dfb279] focus:ring-1 focus:ring-[#dfb279] transition-all cursor-pointer font-semibold"
@@ -505,16 +511,16 @@ return;
                                 {/* Desglose Tarifario */}
                                 <div className="mt-4 pt-4 border-t border-white/10 space-y-2 text-xs">
                                     <div className="flex justify-between">
-                                        <span className="text-white/50">Costo Alquiler ({rentDays} {rentDays === 1 ? 'día' : 'días'}: {formatDate(startDate)} al {formatDate(endDate)})</span>
-                                        <span className="text-white font-semibold">S/ {(pricePerDay * rentDays).toFixed(2)}</span>
+                                        <span className="text-white/50">Costo Alquiler ({rentDays} {rentDays === 1 ? 'día' : 'días'}: {formatDate(startDate)} {startDate === endDate ? '' : `al ${formatDate(endDate)}`})</span>
+                                        <span className="text-white font-semibold">S/ {rentalSubtotal.toFixed(2)}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-white/50">Garantía Reembolsable</span>
-                                        <span className="text-white font-semibold">S/ {parseFloat(product?.security_deposit || '50').toFixed(2)}</span>
+                                        <span className="text-white font-semibold">S/ {securityDeposit.toFixed(2)}</span>
                                     </div>
                                     <div className="flex justify-between text-sm pt-2 border-t border-white/10">
                                         <span className="text-white font-bold uppercase tracking-wider">Total Estimado</span>
-                                        <span className="text-[#dfb279] font-extrabold">S/ {((pricePerDay * rentDays) + parseFloat(product?.security_deposit || '50')).toFixed(2)}</span>
+                                        <span className="text-[#dfb279] font-extrabold">S/ {totalCost.toFixed(2)}</span>
                                     </div>
                                 </div>
                             </div>

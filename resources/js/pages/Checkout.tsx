@@ -11,10 +11,8 @@ import { useState, useEffect } from 'react';
 const { defaultStartDate, defaultEndDate } = (() => {
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
-    const threeDaysLater = new Date(today.getTime() + 86400000 * 3);
-    const threeDaysLaterStr = threeDaysLater.toISOString().split('T')[0];
 
-    return { defaultStartDate: todayStr, defaultEndDate: threeDaysLaterStr };
+    return { defaultStartDate: todayStr, defaultEndDate: todayStr };
 })();
 
 export default function Checkout({ 
@@ -200,81 +198,94 @@ export default function Checkout({
         }
     }, [auth.user, setData]);
 
+    const calculateDaysDifference = (startStr: string, endStr: string) => {
+        if (!startStr || !endStr) return 1;
+        const [sY, sM, sD] = startStr.split('-').map(Number);
+        const [eY, eM, eD] = endStr.split('-').map(Number);
+        if (isNaN(sY) || isNaN(eY)) return 1;
+        const sDate = Date.UTC(sY, sM - 1, sD);
+        const eDate = Date.UTC(eY, eM - 1, eD);
+        const diffMs = eDate - sDate;
+        const days = Math.round(diffMs / (1000 * 60 * 60 * 24)) + 1;
+
+        return days > 0 ? days : 1;
+    };
+
+    const getTomorrowString = () => {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        return tomorrow.toISOString().split('T')[0];
+    };
+
+    const formatDate = (dateStr: string) => {
+        if (!dateStr) return '';
+        const parts = dateStr.split('-');
+        if (parts.length !== 3) return dateStr;
+
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    };
+
     const calculateTotal = () => {
-        const start = new Date(data.start_date);
-        const end = new Date(data.end_date);
-        const diffTime = Math.abs(end.getTime() - start.getTime());
-        const diffDays = isNaN(start.getTime()) || isNaN(end.getTime()) ? 0 : Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        const itemsToCalculate = cartItems.length > 0 ? cartItems : [{
+            product,
+            selectedSize: sizeParam || 'M',
+            selectedColor: colorParam || '',
+            startDate: data.start_date,
+            endDate: data.end_date,
+            rentDays: calculateDaysDifference(data.start_date, data.end_date)
+        }];
 
-        let mainPrice = parseFloat(product?.discounted_price_per_day || product?.price_per_day) || 0;
-        let mainGarantia = parseFloat(product?.security_deposit) || (mainPrice * 0.20);
-        
-        if (cartItems.length > 0) {
-            const firstItem = cartItems[0];
-            mainPrice = parseFloat(firstItem.product?.discounted_price_per_day || firstItem.product?.price_per_day) || 0;
-            mainGarantia = parseFloat(firstItem.product?.security_deposit) || (mainPrice * 0.20);
-        }
+        let totalSubtotal = 0;
+        let totalDeposit = 0;
+        const itemBreakdowns: any[] = [];
 
-        const mainSubtotal = mainPrice * diffDays;
+        itemsToCalculate.forEach((item: any) => {
+            const itemStart = item.startDate || data.start_date;
+            const itemEnd = item.endDate || data.end_date;
+            const itemDays = calculateDaysDifference(itemStart, itemEnd);
+            const dailyPrice = parseFloat(item.product?.discounted_price_per_day || item.product?.price_per_day || '0');
+            const itemSubtotal = dailyPrice * itemDays;
 
-        let accessoriesSubtotal = 0;
-        let accessoriesGarantia = 0;
+            const rawDep = parseFloat(item.product?.security_deposit);
+            const itemDeposit = (!isNaN(rawDep) && rawDep > 0) ? rawDep : (dailyPrice * 0.20);
 
-        if (cartItems.length > 1) {
-            // Calculate using localStorage cart items
-            cartItems.slice(1).forEach((item: any) => {
-                const accPrice = parseFloat(item.product?.discounted_price_per_day || item.product?.price_per_day) || 0;
-                const accSub = accPrice * diffDays;
-                let accDep = parseFloat(item.product?.security_deposit);
+            totalSubtotal += itemSubtotal;
+            totalDeposit += itemDeposit;
 
-                if (isNaN(accDep) || accDep <= 0) {
-                    accDep = accPrice * 0.20;
-                }
-
-                accessoriesSubtotal += accSub;
-                accessoriesGarantia += accDep;
+            itemBreakdowns.push({
+                ...item,
+                rentDays: itemDays,
+                dailyPrice,
+                itemSubtotal,
+                itemDeposit,
+                itemTotal: itemSubtotal + itemDeposit,
+                startDateFormatted: formatDate(itemStart),
+                endDateFormatted: formatDate(itemEnd)
             });
-        } else {
-            // Fallback to data.accessories checklist (for standalone checkout)
-            data.accessories.forEach((item) => {
-                const acc = accessories.find((a) => a.id === item.product_id);
+        });
 
-                if (acc) {
-                    const accPrice = parseFloat(acc?.discounted_price_per_day || acc?.price_per_day) || 0;
-                    const accSub = accPrice * diffDays;
-                    let accDep = parseFloat(acc?.security_deposit);
-
-                    if (isNaN(accDep) || accDep <= 0) {
-                        accDep = accPrice * 0.20;
-                    }
-
-                    accessoriesSubtotal += accSub;
-                    accessoriesGarantia += accDep;
-                }
-            });
-        }
-
-        // Apply discount on accessories if main garment rent subtotal > promotion min_amount
+        // Apply discount on accessories or main subtotal if promotion exists and subtotal > promotion min_amount
         let discountAmount = 0;
-        const isPromoApplicable = promotion && (mainSubtotal > parseFloat(promotion.min_amount));
-
-        if (isPromoApplicable && accessoriesSubtotal > 0) {
-            discountAmount = accessoriesSubtotal * (parseFloat(promotion.discount_percentage) / 100);
+        if (promotion && totalSubtotal > parseFloat(promotion.min_amount)) {
+            if (parseFloat(promotion.discount_percentage) > 0) {
+                discountAmount = (totalSubtotal * parseFloat(promotion.discount_percentage)) / 100;
+            }
         }
 
-        const totalGarantia = mainGarantia + accessoriesGarantia;
-        const subtotal = mainSubtotal + accessoriesSubtotal - discountAmount;
-        const total = subtotal + totalGarantia;
+        const grandTotal = totalSubtotal + totalDeposit - discountAmount;
 
         return { 
-            diffDays, 
-            subtotal, 
-            garantia: totalGarantia, 
-            total 
+            diffDays: itemBreakdowns[0]?.rentDays || calculateDaysDifference(data.start_date, data.end_date), 
+            itemBreakdowns,
+            subtotal: totalSubtotal, 
+            garantia: totalDeposit, 
+            discountAmount,
+            total: grandTotal 
         };
     };
 
-    const { diffDays, subtotal, garantia, total } = calculateTotal();
+    const { diffDays, itemBreakdowns, subtotal, garantia, discountAmount, total } = calculateTotal();
 
     const clearCart = () => {
         localStorage.removeItem('armario_rental_cart');
@@ -861,76 +872,60 @@ export default function Checkout({
                                     </div>
                                 </div>
 
-                                <div className="bg-white border border-[#f5dce0]/85 rounded-3xl p-6 shadow-sm space-y-6">
+                                <div className="bg-white border border-[#f5dce0]/85 rounded-3xl p-6 shadow-sm space-y-5">
                                     
-                                    <h3 className="text-base font-extrabold text-[#4a1018] tracking-wide border-b border-[#fbf2f4] pb-4 font-serif">
-                                        Resumen de Alquiler
-                                    </h3>
+                                    <p className="text-xs font-bold text-[#4a1018] uppercase tracking-wider border-b border-[#fbf2f4] pb-3">
+                                        Definir Período de Alquiler:
+                                    </p>
                                     
-                                    {/* Selector de Fechas en el Resumen */}
-                                    <div className="space-y-4">
+                                    {/* Selector de Rango de Fechas (Grid de 2 Columnas idéntico a Producto) */}
+                                    <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                            <label className="block text-[10px] font-bold text-[#805056] uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                                                <Calendar size={12} className="text-[#782331]" />
-                                                Fecha de Recojo
-                                            </label>
+                                            <label className="text-[10px] text-[#805056] font-bold uppercase tracking-wider block mb-1.5">Recojo</label>
                                             <input
                                                 type="date"
                                                 value={data.start_date}
-                                                min={new Date().toISOString().split('T')[0]}
-                                                onChange={e => setData('start_date', e.target.value)}
-                                                className="w-full bg-white border border-[#f5dce0] text-slate-800 rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#782331] focus:ring-1 focus:ring-[#782331] transition-all text-xs font-semibold [color-scheme:light]"
+                                                min={getTomorrowString()}
+                                                onChange={e => {
+                                                    const newStart = e.target.value;
+                                                    if (new Date(newStart) > new Date(data.end_date)) {
+                                                        setData(prev => ({ ...prev, start_date: newStart, end_date: newStart }));
+                                                    } else {
+                                                        setData('start_date', newStart);
+                                                    }
+                                                }}
+                                                className="w-full bg-white border border-[#f5dce0] text-slate-800 rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#782331] focus:ring-1 focus:ring-[#782331] transition-all text-xs font-semibold [color-scheme:light] cursor-pointer"
                                                 required
                                             />
                                             {errors.start_date && <p className="text-[#782331] text-xs mt-1">{errors.start_date}</p>}
                                         </div>
                                         <div>
-                                            <label className="block text-[10px] font-bold text-[#805056] uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                                                <Calendar size={12} className="text-[#782331]" />
-                                                Fecha de Devolución
-                                            </label>
+                                            <label className="text-[10px] text-[#805056] font-bold uppercase tracking-wider block mb-1.5">Devolución</label>
                                             <input
                                                 type="date"
                                                 value={data.end_date}
-                                                min={data.start_date || new Date().toISOString().split('T')[0]}
+                                                min={data.start_date || getTomorrowString()}
                                                 onChange={e => setData('end_date', e.target.value)}
-                                                className="w-full bg-white border border-[#f5dce0] text-slate-800 rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#782331] focus:ring-1 focus:ring-[#782331] transition-all text-xs font-semibold [color-scheme:light]"
+                                                className="w-full bg-white border border-[#f5dce0] text-slate-800 rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#782331] focus:ring-1 focus:ring-[#782331] transition-all text-xs font-semibold [color-scheme:light] cursor-pointer"
                                                 required
                                             />
                                             {errors.end_date && <p className="text-[#782331] text-xs mt-1">{errors.end_date}</p>}
                                         </div>
                                     </div>
 
-                                    {/* Desglose de Precios */}
-                                    <div className="bg-[#fdf6f7]/60 rounded-2xl p-4 border border-[#f5dce0]/40 space-y-3.5 text-xs">
-                                        <div className="flex justify-between items-center text-[#805056] font-medium">
-                                            <span>Días de renta</span>
-                                            <span className="text-[#4a1018] font-bold bg-white px-2 py-0.5 rounded-lg border border-[#f5dce0]/80 shadow-sm">
-                                                {diffDays} {diffDays === 1 ? 'día' : 'días'}
-                                            </span>
+                                    {/* Desglose Tarifario idéntico a Producto.tsx */}
+                                    <div className="bg-[#fdf6f7]/60 rounded-2xl p-4 border border-[#f5dce0]/40 space-y-2.5 text-xs">
+                                        <div className="flex justify-between items-center text-[#805056]">
+                                            <span>Costo Alquiler ({diffDays} {diffDays === 1 ? 'día' : 'días'}: {formatDate(data.start_date)} {data.start_date === data.end_date ? '' : `al ${formatDate(data.end_date)}`})</span>
+                                            <span className="text-[#4a1018] font-semibold">S/ {subtotal.toFixed(2)}</span>
                                         </div>
-                                        
-                                        <div className="flex justify-between items-center pt-2 border-t border-[#fbf2f4]">
-                                            <span className="text-[#805056]">Subtotal ({diffDays} días)</span>
-                                            <span className="text-[#4a1018] font-bold">S/ {subtotal.toFixed(2)}</span>
+                                        <div className="flex justify-between items-center text-[#805056]">
+                                            <span>Garantía Reembolsable</span>
+                                            <span className="text-[#4a1018] font-semibold">S/ {garantia.toFixed(2)}</span>
                                         </div>
-                                        
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-[#805056] flex items-center gap-1">
-                                                Garantía Reembolsable
-                                            </span>
-                                            <span className="text-[#4a1018] font-bold">S/ {garantia.toFixed(2)}</span>
-                                        </div>
-                                    </div>
-
-                                    {/* Sección del Total */}
-                                    <div className="border-t border-[#fbf2f4] pt-5">
-                                        <div className="flex justify-between items-end">
-                                            <div>
-                                                <span className="text-[10px] text-[#805056] font-bold uppercase tracking-wider">Monto Total</span>
-                                                <div className="text-[9px] text-[#805056]/60 font-medium mt-0.5">Incluye reembolso de garantía</div>
-                                            </div>
-                                            <span className="text-2xl font-extrabold text-[#782331] tracking-tight">S/ {total.toFixed(2)}</span>
+                                        <div className="flex justify-between items-center text-sm pt-2 border-t border-[#f5dce0]/60">
+                                            <span className="text-[#4a1018] font-bold uppercase tracking-wider text-xs">Total Estimado</span>
+                                            <span className="text-[#782331] font-extrabold text-lg">S/ {total.toFixed(2)}</span>
                                         </div>
                                     </div>
 

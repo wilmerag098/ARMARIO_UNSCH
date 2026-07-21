@@ -28,8 +28,9 @@ return null;
     if (hasItems) {
         cartItems.forEach((item: any) => {
             const price = parseFloat(item.product?.discounted_price_per_day || item.product?.price_per_day || '0');
-            const dep = parseFloat(item.product?.security_deposit || '50');
-            totalSubtotal += price * (item.rentDays || 3);
+            const rawDep = parseFloat(item.product?.security_deposit);
+            const dep = (!isNaN(rawDep) && rawDep > 0) ? rawDep : (price * 0.20);
+            totalSubtotal += price * (item.rentDays || 1);
             totalDeposit += dep;
         });
     }
@@ -86,8 +87,9 @@ return null;
                             <div className="space-y-4 mb-6">
                                 {cartItems.map((item: any) => {
                                     const pricePerDay = parseFloat(item.product?.discounted_price_per_day || item.product?.price_per_day || '0');
-                                    const itemSubtotal = pricePerDay * (item.rentDays || 3);
-                                    const itemDeposit = parseFloat(item.product?.security_deposit || '50');
+                                    const itemSubtotal = pricePerDay * (item.rentDays || 1);
+                                    const rawItemDep = parseFloat(item.product?.security_deposit);
+                                    const itemDeposit = (!isNaN(rawItemDep) && rawItemDep > 0) ? rawItemDep : (pricePerDay * 0.20);
                                     const itemTotal = itemSubtotal + itemDeposit;
 
                                     return (
